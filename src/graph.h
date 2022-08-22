@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <iostream>
 #include <type_traits>
+#include <numa.h>
 
 #include "pvector.h"
 #include "util.h"
@@ -120,12 +121,15 @@ class CSRGraph {
     if (out_index_ != nullptr)
       delete[] out_index_;
     if (out_neighbors_ != nullptr)
-      delete[] out_neighbors_;
+      //delete[] out_neighbors_;
+      // memory allocated using numa_alloc* must be freed using numa_free
+      numa_free(out_neighbors_, num_edges_ * sizeof(DestID_));
     if (directed_) {
       if (in_index_ != nullptr)
         delete[] in_index_;
       if (in_neighbors_ != nullptr)
-        delete[] in_neighbors_;
+        //delete[] in_neighbors_;
+        numa_free(in_neighbors_, num_edges_ * sizeof(DestID_));
     }
   }
 
