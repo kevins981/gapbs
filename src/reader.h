@@ -286,11 +286,14 @@ class Reader {
     file.read(reinterpret_cast<char*>(&num_nodes), sizeof(SGOffset));
     pvector<SGOffset> offsets(num_nodes+1);
     
+#ifdef NEIGH_ON_NUMA1 
     // Allocate on NUMA node 1
     void *numa_blob_neighs = numa_alloc_onnode(num_edges * sizeof(DestID_), 1);
     std::cout << "[INFO] Allocating neighbors array on NUMA node 1." << std::endl;
     neighs = new(numa_blob_neighs) DestID_[num_edges];
-    //neighs = new DestID_[num_edges];
+#else
+    neighs = new DestID_[num_edges];
+#endif
 
     std::streamsize num_index_bytes = (num_nodes+1) * sizeof(SGOffset);
     std::streamsize num_neigh_bytes = num_edges * sizeof(DestID_);
@@ -298,11 +301,14 @@ class Reader {
     file.read(reinterpret_cast<char*>(neighs), num_neigh_bytes);
     index = CSRGraph<NodeID_, DestID_>::GenIndex(offsets, neighs);
     if (directed && invert) {
+#ifdef NEIGH_ON_NUMA1 
       // Allocate on NUMA node 1
       void *numa_blob_inv_neighs = numa_alloc_onnode(num_edges * sizeof(DestID_), 1);
       std::cout << "[INFO] Allocating inv neighbors array on NUMA node 1." << std::endl;
       inv_neighs = new(numa_blob_inv_neighs) DestID_[num_edges];
-      //inv_neighs = new DestID_[num_edges];
+#else
+      inv_neighs = new DestID_[num_edges];
+#endif
       file.read(reinterpret_cast<char*>(offsets.data()), num_index_bytes);
       file.read(reinterpret_cast<char*>(inv_neighs), num_neigh_bytes);
       inv_index = CSRGraph<NodeID_, DestID_>::GenIndex(offsets, inv_neighs);

@@ -121,15 +121,21 @@ class CSRGraph {
     if (out_index_ != nullptr)
       delete[] out_index_;
     if (out_neighbors_ != nullptr)
-      //delete[] out_neighbors_;
+#ifdef NEIGH_ON_NUMA1 
       // memory allocated using numa_alloc* must be freed using numa_free
       numa_free(out_neighbors_, num_edges_ * sizeof(DestID_));
+#else 
+      delete[] out_neighbors_;
+#endif
     if (directed_) {
       if (in_index_ != nullptr)
         delete[] in_index_;
       if (in_neighbors_ != nullptr)
-        //delete[] in_neighbors_;
+#ifdef NEIGH_ON_NUMA1 
         numa_free(in_neighbors_, num_edges_ * sizeof(DestID_));
+#else 
+        delete[] in_neighbors_;
+#endif
     }
   }
 

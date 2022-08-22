@@ -23,6 +23,10 @@ SUITE = $(KERNELS) converter
 .PHONY: all
 all: $(SUITE)
 
+.PHONY: neigh_on_numa1
+neigh_on_numa1: CXX_FLAGS += -DNEIGH_ON_NUMA1
+neigh_on_numa1: all
+
 % : src/%.cc src/*.h
 	$(CXX) $(CXX_FLAGS) $< -o $@ $(LIBS)
 
