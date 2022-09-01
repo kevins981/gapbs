@@ -1,6 +1,7 @@
 # See LICENSE.txt for license details.
 
 CXX_FLAGS += -std=c++11 -O3 -Wall -g
+#CXX_FLAGS += -std=c++11 -O0 -Wall -g
 PAR_FLAG = -fopenmp
 LIBS = -lnuma
 
@@ -26,6 +27,11 @@ all: $(SUITE)
 .PHONY: neigh_on_numa1
 neigh_on_numa1: CXX_FLAGS += -DNEIGH_ON_NUMA1
 neigh_on_numa1: all
+
+.PHONY: neigh_on_nvm
+neigh_on_nvm: CXX_FLAGS += -DNEIGH_ON_NVM
+neigh_on_nvm: LIBS += -lmemkind
+neigh_on_nvm: all
 
 % : src/%.cc src/*.h
 	$(CXX) $(CXX_FLAGS) $< -o $@ $(LIBS)

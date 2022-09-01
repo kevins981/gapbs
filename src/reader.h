@@ -10,6 +10,7 @@
 #include <string>
 #include <type_traits>
 #include <numa.h>
+#include <memkind.h>
 
 #include "pvector.h"
 #include "util.h"
@@ -27,6 +28,9 @@ Given filename, returns an edgelist or the entire graph (if serialized)
    directly into the returned graph instance
  - Otherwise, reads the file and returns an edgelist
 */
+
+
+#define PMEM_MAX_SIZE (1024L * 1024L * 1024L * 100L) // 100GB
 
 
 template <typename NodeID_, typename DestID_ = NodeID_,
@@ -264,8 +268,7 @@ class Reader {
     }
     if (weighted && std::is_same<NodeID_, DestID_>::value) {
       std::cout << ".wsg only allowed for weighted graphs" << std::endl;
-      std::exit(-5);
-    }
+      std::exit(-5); }
     if (weighted && !std::is_same<WeightT_, SGID>::value) {
       std::cout << ".wsg only allowed for int32_t weights" << std::endl;
       std::exit(-5);
@@ -275,6 +278,29 @@ class Reader {
       std::cout << "Couldn't open file " << filename_ << std::endl;
       std::exit(-6);
     }
+#if defined(NEIGH_ON_NVM)
+    // Setup persistent memory (NVM)
+    char pmem_path[100] = "/pmem0p1/";
+    std::cout << "[DEBUG] Running memkind test" << std::endl;
+    int status = memkind_check_dax_path(pmem_path);
+    if (!status) {
+        std::cout << pmem_path << " is on DAX-enabled file system." << std::endl;
+    } else {
+        std::cout << pmem_path << " is not on DAX-enabled file system." << std::endl;
+    }
+
+    int memkind_err = 0;
+    struct memkind *pmem_kind = NULL;
+    memkind_err = memkind_create_pmem(pmem_path, PMEM_MAX_SIZE, &pmem_kind);
+    if (memkind_err) {
+        char error_message[MEMKIND_ERROR_MESSAGE_SIZE];
+        memkind_error_message(memkind_err, error_message, MEMKIND_ERROR_MESSAGE_SIZE);
+        //fprintf(stderr, "%s\n", error_message);
+        std::cout << "ERROR: Failed to create pmem pool: " << error_message << std::endl;
+        std::exit(-5);
+    }
+#endif
+
     Timer t;
     t.Start();
     bool directed;
@@ -286,11 +312,24 @@ class Reader {
     file.read(reinterpret_cast<char*>(&num_nodes), sizeof(SGOffset));
     pvector<SGOffset> offsets(num_nodes+1);
     
-#ifdef NEIGH_ON_NUMA1 
+#if defined(NEIGH_ON_NUMA1)
     // Allocate on NUMA node 1
-    void *numa_blob_neighs = numa_alloc_onnode(num_edges * sizeof(DestID_), 1);
     std::cout << "[INFO] Allocating neighbors array on NUMA node 1." << std::endl;
+    void *numa_blob_neighs = numa_alloc_onnode(num_edges * sizeof(DestID_), 1);
     neighs = new(numa_blob_neighs) DestID_[num_edges];
+#elif defined(NEIGH_ON_NVM)
+    // Allocate on NVM
+    std::cout << "[INFO] Allocating neighbors array on NVM of size " << num_edges * sizeof(DestID_) << std::endl;
+    //void *nvm_blob_neighs = memkind_malloc(pmem_kind, num_edges * sizeof(DestID_));
+    //neighs = new(nvm_blob_neighs) DestID_[num_edges];
+    //neighs = static_cast<DestID_ *>(memkind_malloc(pmem_kind, num_edges * sizeof(DestID_)));
+    memkind_err = memkind_posix_memalign(pmem_kind, (void **)&neighs, 64, num_edges * sizeof(DestID_));
+    //memkind_err = memkind_posix_memalign(MEMKIND_DEFAULT, (void **)&neighs, 64, num_edges * sizeof(DestID_));
+    if (memkind_err) {
+      fprintf(stderr, "ERROR! unable to allocated neigh memory in pmem\n");
+      exit(EXIT_FAILURE);
+    }
+    printf("[DEBUG] Neighbor array allocation on pmem successful.\n");
 #else
     neighs = new DestID_[num_edges];
 #endif
@@ -301,11 +340,24 @@ class Reader {
     file.read(reinterpret_cast<char*>(neighs), num_neigh_bytes);
     index = CSRGraph<NodeID_, DestID_>::GenIndex(offsets, neighs);
     if (directed && invert) {
-#ifdef NEIGH_ON_NUMA1 
+#if defined(NEIGH_ON_NUMA1)
       // Allocate on NUMA node 1
-      void *numa_blob_inv_neighs = numa_alloc_onnode(num_edges * sizeof(DestID_), 1);
       std::cout << "[INFO] Allocating inv neighbors array on NUMA node 1." << std::endl;
+      void *numa_blob_inv_neighs = numa_alloc_onnode(num_edges * sizeof(DestID_), 1);
       inv_neighs = new(numa_blob_inv_neighs) DestID_[num_edges];
+#elif defined(NEIGH_ON_NVM)
+      // Allocate on NVM
+      std::cout << "[INFO] Allocating inv neighbors array on NVM." << std::endl;
+      //void *nvm_blob_inv_neighs = memkind_malloc(pmem_kind, num_edges * sizeof(DestID_));
+      //inv_neighs = new(nvm_blob_inv_neighs) DestID_[num_edges];
+      //inv_neighs = static_cast<DestID_ *>(memkind_malloc(pmem_kind, num_edges * sizeof(DestID_)));
+      memkind_err = memkind_posix_memalign(pmem_kind, (void **)&inv_neighs, 64, num_edges * sizeof(DestID_));
+      //memkind_err = memkind_posix_memalign(MEMKIND_DEFAULT, (void **)&inv_neighs, 64, num_edges * sizeof(DestID_));
+      if (memkind_err) {
+        fprintf(stderr, "ERROR! unable to allocated inv_neigh memory in pmem\n");
+        exit(EXIT_FAILURE);
+      }
+      printf("[DEBUG] Inv neighbor array allocation on pmem successful.\n");
 #else
       inv_neighs = new DestID_[num_edges];
 #endif
@@ -316,11 +368,29 @@ class Reader {
     file.close();
     t.Stop();
     PrintTime("Read Time", t.Seconds());
+#if defined(NEIGH_ON_NVM)
+    size_t stats_active;
+    size_t stats_resident;
+    size_t stats_allocated;
+    memkind_update_cached_stats();
+    memkind_get_stat(pmem_kind, MEMKIND_STAT_TYPE_RESIDENT, &stats_resident);
+    memkind_get_stat(pmem_kind, MEMKIND_STAT_TYPE_ACTIVE, &stats_active);
+    memkind_get_stat(pmem_kind, MEMKIND_STAT_TYPE_ALLOCATED, &stats_allocated);
+    fprintf(stdout, "memkind stats: resident %zu ,active %zu, allocated %zu \n",
+            stats_resident, stats_active, stats_allocated);
+
+    if (directed)
+      return CSRGraph<NodeID_, DestID_, invert>(num_nodes, index, neighs,
+                                                inv_index, inv_neighs, pmem_kind);
+    else
+      return CSRGraph<NodeID_, DestID_, invert>(num_nodes, index, neighs, pmem_kind);
+#else
     if (directed)
       return CSRGraph<NodeID_, DestID_, invert>(num_nodes, index, neighs,
                                                 inv_index, inv_neighs);
     else
       return CSRGraph<NodeID_, DestID_, invert>(num_nodes, index, neighs);
+#endif
   }
 };
 

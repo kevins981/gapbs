@@ -4,12 +4,13 @@
 #ifndef GRAPH_H_
 #define GRAPH_H_
 
-#include <algorithm>
+#include <algorithm> 
 #include <cinttypes>
 #include <cstddef>
 #include <iostream>
 #include <type_traits>
 #include <numa.h>
+#include <memkind.h>
 
 #include "pvector.h"
 #include "util.h"
@@ -121,9 +122,11 @@ class CSRGraph {
     if (out_index_ != nullptr)
       delete[] out_index_;
     if (out_neighbors_ != nullptr)
-#ifdef NEIGH_ON_NUMA1 
+#if defined(NEIGH_ON_NUMA1)
       // memory allocated using numa_alloc* must be freed using numa_free
       numa_free(out_neighbors_, num_edges_ * sizeof(DestID_));
+#elif defined(NEIGH_ON_NVM)
+      memkind_free(pmem_kind, out_neighbors_);
 #else 
       delete[] out_neighbors_;
 #endif
@@ -131,8 +134,10 @@ class CSRGraph {
       if (in_index_ != nullptr)
         delete[] in_index_;
       if (in_neighbors_ != nullptr)
-#ifdef NEIGH_ON_NUMA1 
+#if defined(NEIGH_ON_NUMA1)
         numa_free(in_neighbors_, num_edges_ * sizeof(DestID_));
+#elif defined(NEIGH_ON_NVM)
+        memkind_free(pmem_kind, in_neighbors_);
 #else 
         delete[] in_neighbors_;
 #endif
@@ -148,7 +153,7 @@ class CSRGraph {
   CSRGraph(int64_t num_nodes, DestID_** index, DestID_* neighs) :
     directed_(false), num_nodes_(num_nodes),
     out_index_(index), out_neighbors_(neighs),
-    in_index_(index), in_neighbors_(neighs) {
+    in_index_(index), in_neighbors_(neighs){
       num_edges_ = (out_index_[num_nodes_] - out_index_[0]) / 2;
     }
 
@@ -156,9 +161,27 @@ class CSRGraph {
         DestID_** in_index, DestID_* in_neighs) :
     directed_(true), num_nodes_(num_nodes),
     out_index_(out_index), out_neighbors_(out_neighs),
-    in_index_(in_index), in_neighbors_(in_neighs) {
+    in_index_(in_index), in_neighbors_(in_neighs){
       num_edges_ = out_index_[num_nodes_] - out_index_[0];
     }
+
+#if defined(NEIGH_ON_NVM)
+  // Constructors with pmem_kind memkind handle so we can free the memory
+  CSRGraph(int64_t num_nodes, DestID_** index, DestID_* neighs, memkind *pmem_kind) :
+    directed_(false), num_nodes_(num_nodes),
+    out_index_(index), out_neighbors_(neighs),
+    in_index_(index), in_neighbors_(neighs), pmem_kind(pmem_kind){
+      num_edges_ = (out_index_[num_nodes_] - out_index_[0]) / 2;
+    }
+
+  CSRGraph(int64_t num_nodes, DestID_** out_index, DestID_* out_neighs,
+        DestID_** in_index, DestID_* in_neighs, memkind *pmem_kind) :
+    directed_(true), num_nodes_(num_nodes),
+    out_index_(out_index), out_neighbors_(out_neighs),
+    in_index_(in_index), in_neighbors_(in_neighs), pmem_kind(pmem_kind){
+      num_edges_ = out_index_[num_nodes_] - out_index_[0];
+    }
+#endif
 
   CSRGraph(CSRGraph&& other) : directed_(other.directed_),
     num_nodes_(other.num_nodes_), num_edges_(other.num_edges_),
@@ -206,6 +229,10 @@ class CSRGraph {
 
   int64_t num_edges() const {
     return num_edges_;
+  }
+
+  DestID_** in_index() const {
+    return in_index_;
   }
 
   int64_t num_edges_directed() const {
@@ -280,6 +307,7 @@ class CSRGraph {
   DestID_*  out_neighbors_;
   DestID_** in_index_;
   DestID_*  in_neighbors_;
+  struct memkind *pmem_kind;
 };
 
 #endif  // GRAPH_H_
