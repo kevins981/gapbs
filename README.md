@@ -1,3 +1,10 @@
+Kevin Notes
+===================
+To disable NUMA effects:
+    $ echo 0 > /proc/sys/kernel/numa_balancing
+    $ service numad stop
+
+
 GAP Benchmark Suite [![Build Status](https://github.com/sbeamer/gapbs/actions/workflows/c-cpp.yml/badge.svg)](https://github.com/sbeamer/gapbs/actions/workflows/c-cpp.yml)
 ===================
 
