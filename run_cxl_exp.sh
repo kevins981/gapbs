@@ -2,10 +2,10 @@
 
 GRAPH_DIR="/ssd1/songxin8/thesis/graph/gapbs_nvm/benchmark/graphs"
 ITERS=8
-declare -a GRAPH_LIST=("kron_28")
-#declare -a GRAPH_LIST=("kron")
-declare -a EXE_LIST=("bc" "pr")
-#declare -a EXE_LIST=("pr")
+#declare -a GRAPH_LIST=("kron_28")
+declare -a GRAPH_LIST=("twitter")
+#declare -a EXE_LIST=("bc" "pr")
+declare -a EXE_LIST=("sssp")
 #export OMP_PLACES="{0:15},{32:15}"
 #export OMP_PROC_BIND=spread
 
@@ -27,6 +27,11 @@ run_gap () {
       ;; 
     "pr")
       /usr/bin/time -v /usr/bin/numactl --membind=0 --cpunodebind=0 ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -i1000 -t1e-4 -n${ITERS} &>> $OUTFILE &
+      TIME_PID=$! 
+      EXE_PID=$(pgrep -P $TIME_PID)
+      ;;
+    "sssp")
+      /usr/bin/time -v /usr/bin/numactl --membind=0 --cpunodebind=0 ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.wsg -d2 -n${ITERS} &>> $OUTFILE &
       TIME_PID=$! 
       EXE_PID=$(pgrep -P $TIME_PID)
       ;;

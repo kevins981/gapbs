@@ -5,6 +5,7 @@
 #define PVECTOR_H_
 
 #include <algorithm>
+#include <numa.h>
 
 
 /*
@@ -17,7 +18,7 @@ Vector class with ability to not initialize or do initialize in parallel
  - When pvector is resized, new elements are uninitialized
  - Resizing is not thread-safe
 */
-
+enum MEM_TYPE {REGULAR_DRAM, CXL_DRAM};
 
 template <typename T_>
 class pvector {
@@ -31,6 +32,20 @@ class pvector {
     end_size_ = start_ + num_elements;
     end_capacity_ = end_size_;
   }
+
+#ifdef NEIGH_ON_NUMA1 
+  pvector(size_t num_elements, MEM_TYPE mem_type) {
+    if (mem_type == CXL_DRAM) {
+      void *numa_blob = numa_alloc_onnode(num_elements * sizeof(T_), 1);
+      std::cout << "[INFO] Allocating pvector on NUMA node 1." << std::endl;
+      start_ = new(numa_blob) T_[num_elements];
+      end_size_ = start_ + num_elements;
+      end_capacity_ = end_size_;
+    } else {
+      std::cout << "[ERROR] pvector memory type " << mem_type << " not supported." << std::endl;
+    }
+  }
+#endif
 
   pvector(size_t num_elements, T_ init_val) : pvector(num_elements) {
     fill(init_val);
@@ -71,7 +86,11 @@ class pvector {
 
   void ReleaseResources(){
     if (start_ != nullptr) {
+#ifdef NEIGH_ON_NUMA1 
+      numa_free(start_, this->size() * sizeof(T_));
+#else 
       delete[] start_;
+#endif
     }
   }
 
