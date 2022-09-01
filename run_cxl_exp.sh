@@ -9,11 +9,11 @@ declare -a EXE_LIST=("sssp")
 #export OMP_PLACES="{0:15},{32:15}"
 #export OMP_PROC_BIND=spread
 
-run_gap () {
+run_gap () { 
   OUTFILE=$1 #first argument
   GRAPH=$2
   EXE=$3
-  #echo "Before running" &> $OUTFILE
+  echo "Start" > $OUTFILE
   #numastat -v &>> $OUTFILE
   
   case $EXE in
