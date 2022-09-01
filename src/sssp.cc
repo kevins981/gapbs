@@ -88,7 +88,12 @@ pvector<WeightT> DeltaStep(const WGraph &g, NodeID source, WeightT delta) {
   Timer t;
   pvector<WeightT> dist(g.num_nodes(), kDistInf);
   dist[source] = 0;
+#ifdef NEIGH_ON_NUMA1 
   pvector<NodeID> frontier(g.num_edges_directed(), CXL_DRAM);
+#else
+  // Allocate on local DRAM
+  pvector<NodeID> frontier(g.num_edges_directed());
+#endif
   // two element arrays for double buffering curr=iter&1, next=(iter+1)&1
   size_t shared_indexes[2] = {0, kMaxBin};
   size_t frontier_tails[2] = {1, 0};
