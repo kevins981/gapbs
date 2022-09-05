@@ -5,6 +5,15 @@ CXX_FLAGS += -std=c++11 -O3 -Wall -g
 PAR_FLAG = -fopenmp
 LIBS = -lnuma
 
+VTUNE_HOME= /opt/intel/oneapi/vtune/2022.3.0
+
+ifneq ($(VTUNE_HOME),)
+  CXX_FLAGS +=  -DVTUNE_ANALYSIS=1
+  INCLUDES += -I${VTUNE_HOME}/include
+  LIBS +=-L${VTUNE_HOME}/lib64 -littnotify
+  LIBS +=-ldl
+endif
+
 ifneq (,$(findstring icpc,$(CXX)))
 	PAR_FLAG = -openmp
 endif
@@ -34,7 +43,7 @@ neigh_on_nvm: LIBS += -lmemkind
 neigh_on_nvm: all
 
 % : src/%.cc src/*.h
-	$(CXX) $(CXX_FLAGS) $< -o $@ $(LIBS)
+	$(CXX) $(CXX_FLAGS) $(INCLUDES) $< -o $@ $(LIBS)
 
 # Testing
 include test/test.mk

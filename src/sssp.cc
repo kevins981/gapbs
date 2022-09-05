@@ -15,6 +15,10 @@
 #include "pvector.h"
 #include "timer.h"
 
+#ifdef VTUNE_ANALYSIS
+    #include <ittnotify.h>
+#endif
+
 
 /*
 GAP Benchmark Suite
@@ -88,12 +92,15 @@ pvector<WeightT> DeltaStep(const WGraph &g, NodeID source, WeightT delta) {
   Timer t;
   pvector<WeightT> dist(g.num_nodes(), kDistInf);
   dist[source] = 0;
-#ifdef NEIGH_ON_NUMA1 
-  pvector<NodeID> frontier(g.num_edges_directed(), CXL_DRAM);
-#else
+//#if defined(NEIGH_ON_NUMA1)
+//  pvector<NodeID> frontier(g.num_edges_directed(), CXL_DRAM);
+//#elif defined(NEIGH_ON_NVM)
+//  std::cout << "break point 1" << std::endl;
+//  pvector<NodeID> frontier(g.num_edges_directed(), PMEM,);
+//#else
   // Allocate on local DRAM
   pvector<NodeID> frontier(g.num_edges_directed());
-#endif
+//#endif
   // two element arrays for double buffering curr=iter&1, next=(iter+1)&1
   size_t shared_indexes[2] = {0, kMaxBin};
   size_t frontier_tails[2] = {1, 0};
@@ -197,6 +204,10 @@ bool SSSPVerifier(const WGraph &g, NodeID source,
 
 
 int main(int argc, char* argv[]) {
+#ifdef VTUNE_ANALYSIS
+  __itt_pause();
+  printf("[INFO: VTUNE] Vtune analysis enabled. Only the kernel execution iterations will be profiled.\n");
+#endif
   CLDelta<WeightT> cli(argc, argv, "single-source shortest-path");
   if (!cli.ParseArgs())
     return -1;
@@ -210,6 +221,9 @@ int main(int argc, char* argv[]) {
   auto VerifierBound = [&vsp] (const WGraph &g, const pvector<WeightT> &dist) {
     return SSSPVerifier(g, vsp.PickNext(), dist);
   };
+#ifdef VTUNE_ANALYSIS
+  __itt_resume();
+#endif
   BenchmarkKernel(cli, g, SSSPBound, PrintSSSPStats, VerifierBound);
   return 0;
 }
