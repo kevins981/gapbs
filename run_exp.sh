@@ -64,6 +64,8 @@ run_gap () {
 
 [[ $EUID -ne 0 ]] && echo "This script must be run using sudo or as root." && exit 1
 
+./setup.sh
+
 # All allocations on node 0
 make clean -j
 make -j
