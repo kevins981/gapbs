@@ -1,13 +1,16 @@
 #!/bin/bash
 
 GRAPH_DIR="/ssd1/songxin8/thesis/graph/gapbs_nvm/benchmark/graphs"
-ITERS=8
-#declare -a GRAPH_LIST=("kron_28")
+ITERS=16
 declare -a GRAPH_LIST=("twitter")
-#declare -a EXE_LIST=("bc" "pr")
 declare -a EXE_LIST=("sssp")
-#export OMP_PLACES="{0:15},{32:15}"
-#export OMP_PROC_BIND=spread
+
+clean_cache () { 
+  # clean CPU caches
+  ./tools/clear_cpu_cache
+  # clean page cache
+  echo 3 > /proc/sys/vm/drop_caches
+}
 
 run_gap () { 
   OUTFILE=$1 #first argument
@@ -41,11 +44,12 @@ run_gap () {
       ;;
   esac
 
+  echo "EXE PID is ${EXE_PID}"
   echo "start" > ${OUTFILE}_numastat
   while true; do numastat -p $EXE_PID >> ${OUTFILE}_numastat; sleep 2; done &
   LOG_PID=$!
 
-  echo "Waiting for GAP kernel to complete. numastat is logged into ${OUTFILE}_numastat, PID is ${LOG_PID}" 
+  echo "Waiting for GAP kernel to complete (PID is ${EXE_PID}). numastat is logged into ${OUTFILE}_numastat, PID is ${LOG_PID}" 
   wait $TIME_PID
   echo "GAP kernel complete."
   kill $LOG_PID
@@ -54,28 +58,45 @@ run_gap () {
   #numastat -v  &>> $OUTFILE
 }
 
+##############
+# Script start
+##############
+
+[[ $EUID -ne 0 ]] && echo "This script must be run using sudo or as root." && exit 1
+
 # All allocations on node 0
 make clean -j
 make -j
-
 for graph in "${GRAPH_LIST[@]}"
 do
   for exe in "${EXE_LIST[@]}"
   do
-    run_gap "exp/${exe}_${graph}_allnode0" $graph $exe
+    clean_cache
+    run_gap "exp/${exe}_${graph}_allnode0_32threads_x16_withprefetch" $graph $exe
   done
 done
 
 # Allocate neigh array on node 1
 make clean -j
 make neigh_on_numa1 -j
-
 for graph in "${GRAPH_LIST[@]}"
 do
   for exe in "${EXE_LIST[@]}"
   do
-    run_gap "exp/${exe}_${graph}_neighonnode1" $graph $exe
+    clean_cache
+    run_gap "exp/${exe}_${graph}_neighonnode1_32threads_x16_withprefetch" $graph $exe
+  done
+done
 
+# Allocate neigh array on NVM
+make clean -j
+make neigh_on_nvm -j
+for graph in "${GRAPH_LIST[@]}"
+do
+  for exe in "${EXE_LIST[@]}"
+  do
+    clean_cache
+    run_gap "exp/${exe}_${graph}_neighonnvm_2threads_x16_noprefetch2" $graph $exe
   done
 done
 
