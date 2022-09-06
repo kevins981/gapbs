@@ -286,7 +286,8 @@ class Reader {
     if (!status) {
         std::cout << pmem_path << " is on DAX-enabled file system." << std::endl;
     } else {
-        std::cout << pmem_path << " is not on DAX-enabled file system." << std::endl;
+        std::cout << "ERORR: " << pmem_path << " is not on DAX-enabled file system." << std::endl;
+        std::exit(-5);
     }
 
     int memkind_err = 0;
