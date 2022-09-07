@@ -2,10 +2,15 @@
 
 GRAPH_DIR="/ssd1/songxin8/thesis/graph/gapbs_nvm/benchmark/graphs"
 ITERS=16
+NUM_THREADS=32
+export OMP_NUM_THREADS=${NUM_THREADS}
+RESULT_DIR="exp/"
+
 declare -a GRAPH_LIST=("twitter")
-declare -a EXE_LIST=("sssp")
+declare -a EXE_LIST=("bfs")
 
 clean_cache () { 
+  echo "Clearing caches..."
   # clean CPU caches
   ./tools/clear_cpu_cache
   # clean page cache
@@ -33,6 +38,16 @@ run_gap () {
       TIME_PID=$! 
       EXE_PID=$(pgrep -P $TIME_PID)
       ;;
+    "bfs")
+      /usr/bin/time -v /usr/bin/numactl --membind=0 --cpunodebind=0 ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n${ITERS} &>> $OUTFILE &
+      TIME_PID=$! 
+      EXE_PID=$(pgrep -P $TIME_PID)
+      ;;
+    "cc")
+      /usr/bin/time -v /usr/bin/numactl --membind=0 --cpunodebind=0 ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n${ITERS} &>> $OUTFILE &
+      TIME_PID=$! 
+      EXE_PID=$(pgrep -P $TIME_PID)
+      ;;
     "sssp")
       /usr/bin/time -v /usr/bin/numactl --membind=0 --cpunodebind=0 ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.wsg -d2 -n${ITERS} &>> $OUTFILE &
       TIME_PID=$! 
@@ -53,10 +68,8 @@ run_gap () {
   wait $TIME_PID
   echo "GAP kernel complete."
   kill $LOG_PID
-  
-  #echo "After running"  &>> $OUTFILE
-  #numastat -v  &>> $OUTFILE
 }
+
 
 ##############
 # Script start
@@ -66,6 +79,8 @@ run_gap () {
 
 ./setup.sh
 
+mkdir -p $RESULT_DIR
+
 # All allocations on node 0
 make clean -j
 make -j
@@ -74,7 +89,7 @@ do
   for exe in "${EXE_LIST[@]}"
   do
     clean_cache
-    run_gap "exp/${exe}_${graph}_allnode0_32threads_x16_withprefetch" $graph $exe
+    run_gap "${RESULT_DIR}/${exe}_${graph}_allnode0_${NUM_THREADS}threads_x${ITERS}" $graph $exe
   done
 done
 
@@ -86,7 +101,7 @@ do
   for exe in "${EXE_LIST[@]}"
   do
     clean_cache
-    run_gap "exp/${exe}_${graph}_neighonnode1_32threads_x16_withprefetch" $graph $exe
+    run_gap "${RESULT_DIR}/${exe}_${graph}_neighonnode1_${NUM_THREADS}threads_x${ITERS}" $graph $exe
   done
 done
 
@@ -98,7 +113,7 @@ do
   for exe in "${EXE_LIST[@]}"
   do
     clean_cache
-    run_gap "exp/${exe}_${graph}_neighonnvm_2threads_x16_noprefetch2" $graph $exe
+    run_gap "${RESULT_DIR}/${exe}_${graph}_neighonnvm_${NUM_THREADS}threads_x${ITERS}" $graph $exe
   done
 done
 
