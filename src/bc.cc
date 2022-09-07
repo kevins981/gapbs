@@ -16,6 +16,9 @@
 #include "timer.h"
 #include "util.h"
 
+#ifdef VTUNE_ANALYSIS
+    #include <ittnotify.h>
+#endif
 
 /*
 GAP Benchmark Suite
@@ -227,6 +230,10 @@ bool BCVerifier(const Graph &g, SourcePicker<Graph> &sp, NodeID num_iters,
 
 
 int main(int argc, char* argv[]) {
+  #ifdef VTUNE_ANALYSIS
+  __itt_pause();
+  printf("[INFO: VTUNE] Vtune analysis enabled. Only the kernel execution iterations will be profiled.\n");
+#endif
   CLIterApp cli(argc, argv, "betweenness-centrality", 1);
   if (!cli.ParseArgs())
     return -1;
@@ -242,6 +249,9 @@ int main(int argc, char* argv[]) {
                                      const pvector<ScoreT> &scores) {
     return BCVerifier(g, vsp, cli.num_iters(), scores);
   };
+#ifdef VTUNE_ANALYSIS
+  __itt_resume();
+#endif
   BenchmarkKernel(cli, g, BCBound, PrintTopScores, VerifierBound);
   return 0;
 }

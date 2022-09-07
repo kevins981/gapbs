@@ -14,6 +14,10 @@
 #include "sliding_queue.h"
 #include "timer.h"
 
+#ifdef VTUNE_ANALYSIS
+    #include <ittnotify.h>
+#endif
+
 
 /*
 GAP Benchmark Suite
@@ -242,6 +246,10 @@ bool BFSVerifier(const Graph &g, NodeID source,
 
 
 int main(int argc, char* argv[]) {
+#ifdef VTUNE_ANALYSIS
+  __itt_pause();
+  printf("[INFO: VTUNE] Vtune analysis enabled. Only the kernel execution iterations will be profiled.\n");
+#endif
   CLApp cli(argc, argv, "breadth-first search");
   if (!cli.ParseArgs())
     return -1;
@@ -253,6 +261,9 @@ int main(int argc, char* argv[]) {
   auto VerifierBound = [&vsp] (const Graph &g, const pvector<NodeID> &parent) {
     return BFSVerifier(g, vsp.PickNext(), parent);
   };
+#ifdef VTUNE_ANALYSIS
+  __itt_resume();
+#endif
   BenchmarkKernel(cli, g, BFSBound, PrintBFSStats, VerifierBound);
   return 0;
 }
