@@ -34,32 +34,32 @@ class pvector {
     end_capacity_ = end_size_;
   }
 
-////#ifdef NEIGH_ON_NUMA1 
-//  pvector(size_t num_elements, MEM_TYPE mem_type, memkind *pmem_kind = NULL) {
-//    if (mem_type == CXL_DRAM) {
-//      void *numa_blob = numa_alloc_onnode(num_elements * sizeof(T_), 1);
-//      std::cout << "[INFO] Allocating pvector on NUMA node 1." << std::endl;
-//      start_ = new(numa_blob) T_[num_elements];
-//      end_size_ = start_ + num_elements;
-//     end_capacity_ = end_size_;
-//    } else if (mem_type == PMEM) {
-//      std::cout << "[INFO] Allocating pvector on NUMA node 1." << std::endl;
-//      if (pmem_kind == NULL) {
-//        fprintf(stderr, "memkind pmem_kind is null.\n");
-//        exit(EXIT_FAILURE);
-//      }
-//      this->pmem_kind = pmem_kind;
-//      int memkind_err = memkind_posix_memalign(pmem_kind, (void **)&start_, 64, num_elements * sizeof(T_));
-//      if (memkind_err) {
-//        fprintf(stderr, "ERROR! unable to allocated pvector in pmem\n");
-//        exit(EXIT_FAILURE);
-//      }
-//      printf("[DEBUG] Neighbor array allocation on pmem successful.\n");
-//    } else {
-//      std::cout << "[ERROR] pvector memory type " << mem_type << " not supported." << std::endl;
-//    }
-//  }
-////#endif
+//#ifdef NEIGH_ON_NUMA1 
+  pvector(size_t num_elements, MEM_TYPE mem_type, memkind *pmem_kind = NULL) {
+    if (mem_type == CXL_DRAM) {
+      void *numa_blob = numa_alloc_onnode(num_elements * sizeof(T_), 1);
+      std::cout << "[INFO] Allocating pvector on NUMA node 1." << std::endl;
+      start_ = new(numa_blob) T_[num_elements];
+      end_size_ = start_ + num_elements;
+      end_capacity_ = end_size_;
+      this->memtype = CXL_DRAM;
+    //} else if (mem_type == PMEM) { //  std::cout << "[INFO] Allocating pvector on NUMA node 1." << std::endl;
+    //  if (pmem_kind == NULL) {
+    //    fprintf(stderr, "memkind pmem_kind is null.\n");
+    //    exit(EXIT_FAILURE);
+    //  }
+    //  this->pmem_kind = pmem_kind;
+    //  int memkind_err = memkind_posix_memalign(pmem_kind, (void **)&start_, 64, num_elements * sizeof(T_));
+    //  if (memkind_err) {
+    //    fprintf(stderr, "ERROR! unable to allocated pvector in pmem\n");
+    //    exit(EXIT_FAILURE);
+    //  }
+    //  printf("[DEBUG] Neighbor array allocation on pmem successful.\n");
+    } else {
+      std::cout << "[ERROR] pvector memory type " << mem_type << " not supported." << std::endl;
+    }
+  }
+//#endif
 
   pvector(size_t num_elements, T_ init_val) : pvector(num_elements) {
     fill(init_val);
@@ -105,7 +105,12 @@ class pvector {
 //#elif defined(NEIGH_ON_NVM)
 //      memkind_free(pmem_kind, start_);
 //#else 
+    if (memtype == REGULAR_DRAM){
       delete[] start_;
+    } else if (memtype == CXL_DRAM) {
+      std::cout << "[INFO] Freeing pvector allocated on CXL DRAM." << std::endl;
+      numa_free(start_, this->size() * sizeof(T_));
+    }
 //#endif
     }
   }
@@ -203,6 +208,7 @@ class pvector {
   T_* end_capacity_;
   static const size_t growth_factor = 2;
   struct memkind *pmem_kind;
+  MEM_TYPE memtype = REGULAR_DRAM;
 };
 
 #endif  // PVECTOR_H_
