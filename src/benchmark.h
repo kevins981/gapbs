@@ -17,6 +17,10 @@
 #include "util.h"
 #include "writer.h"
 
+#ifdef VTUNE_ANALYSIS
+    #include <ittnotify.h>
+#endif
+
 
 /*
 GAP Benchmark Suite
@@ -103,15 +107,27 @@ void BenchmarkKernel(const CLApp &cli, const GraphT_ &g,
   g.PrintStats();
   double total_seconds = 0;
   Timer trial_timer;
+#ifdef VTUNE_ANALYSIS
+  // vtune should be paused when launched via the -start-paused vtunes option
+  __itt_resume();
+  printf("[INFO: VTUNE] Vtune analysis resumed.\n");
+#endif
   for (int iter=0; iter < cli.num_trials(); iter++) {
     trial_timer.Start();
     auto result = kernel(g);
     trial_timer.Stop();
     PrintTime("Trial Time", trial_timer.Seconds());
     total_seconds += trial_timer.Seconds();
-    if (cli.do_analysis() && (iter == (cli.num_trials()-1)))
+    if (cli.do_analysis() && (iter == (cli.num_trials()-1))) {
+#ifdef VTUNE_ANALYSIS
+      printf("[WARNING: VTUNE] Vtune analysis is enabled, but running analysis.\n");
+#endif
       stats(g, result);
+    }
     if (cli.do_verify()) {
+#ifdef VTUNE_ANALYSIS
+      printf("[WARNING: VTUNE] Vtune analysis is enabled, but running verification.\n");
+#endif
       trial_timer.Start();
       PrintLabel("Verification",
                  verify(std::ref(g), std::ref(result)) ? "PASS" : "FAIL");
@@ -119,6 +135,9 @@ void BenchmarkKernel(const CLApp &cli, const GraphT_ &g,
       PrintTime("Verification Time", trial_timer.Seconds());
     }
   }
+#ifdef VTUNE_ANALYSIS
+   __itt_pause();
+#endif
   PrintTime("Average Time", total_seconds / cli.num_trials());
 }
 

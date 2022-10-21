@@ -14,10 +14,6 @@
 #include "pvector.h"
 #include "timer.h"
 
-#ifdef VTUNE_ANALYSIS
-    #include <ittnotify.h>
-#endif
-
 
 /*
 GAP Benchmark Suite
@@ -219,19 +215,12 @@ bool CCVerifier(const Graph &g, const pvector<NodeID> &comp) {
 
 
 int main(int argc, char* argv[]) {
-#ifdef VTUNE_ANALYSIS
-  __itt_pause();
-  printf("[INFO: VTUNE] Vtune analysis enabled. Only the kernel execution iterations will be profiled.\n");
-#endif
   CLApp cli(argc, argv, "connected-components-afforest");
   if (!cli.ParseArgs())
     return -1;
   Builder b(cli);
   Graph g = b.MakeGraph();
   auto CCBound = [](const Graph& gr){ return Afforest(gr); };
-#ifdef VTUNE_ANALYSIS
-  __itt_resume();
-#endif
   BenchmarkKernel(cli, g, CCBound, PrintCompStats, CCVerifier);
   return 0;
 }

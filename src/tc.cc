@@ -18,10 +18,6 @@
 #include "pvector.h"
 
 
-#ifdef VTUNE_ANALYSIS
-    #include <ittnotify.h>
-#endif
-
 /*
 GAP Benchmark Suite
 Kernel: Triangle Counting (TC)
@@ -133,10 +129,6 @@ bool TCVerifier(const Graph &g, size_t test_total) {
 
 
 int main(int argc, char* argv[]) {
-#ifdef VTUNE_ANALYSIS
-  __itt_pause();
-  printf("[INFO: VTUNE] Vtune analysis enabled. Only the kernel execution iterations will be profiled.\n");
-#endif
   CLApp cli(argc, argv, "triangle count");
   if (!cli.ParseArgs())
     return -1;
@@ -146,9 +138,6 @@ int main(int argc, char* argv[]) {
     cout << "Input graph is directed but tc requires undirected" << endl;
     return -2;
   }
-#ifdef VTUNE_ANALYSIS
-  __itt_resume();
-#endif
   BenchmarkKernel(cli, g, Hybrid, PrintTriangleStats, TCVerifier);
   return 0;
 }

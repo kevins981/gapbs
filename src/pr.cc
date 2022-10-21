@@ -11,10 +11,6 @@
 #include "graph.h"
 #include "pvector.h"
 
-#ifdef VTUNE_ANALYSIS
-    #include <ittnotify.h>
-#endif
-
 /*
 GAP Benchmark Suite
 Kernel: PageRank (PR)
@@ -100,10 +96,6 @@ bool PRVerifier(const Graph &g, const pvector<ScoreT> &scores,
 
 
 int main(int argc, char* argv[]) {
-#ifdef VTUNE_ANALYSIS
-  __itt_pause();
-  printf("[INFO: VTUNE] Vtune analysis enabled. Only the kernel execution iterations will be profiled.\n");
-#endif
   CLPageRank cli(argc, argv, "pagerank", 1e-4, 20);
   if (!cli.ParseArgs())
     return -1;
@@ -115,9 +107,6 @@ int main(int argc, char* argv[]) {
   auto VerifierBound = [&cli] (const Graph &g, const pvector<ScoreT> &scores) {
     return PRVerifier(g, scores, cli.tolerance());
   };
-#ifdef VTUNE_ANALYSIS
-  __itt_resume();
-#endif
 
   BenchmarkKernel(cli, g, PRBound, PrintTopScores, VerifierBound);
   return 0;

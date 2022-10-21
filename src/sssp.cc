@@ -15,10 +15,6 @@
 #include "pvector.h"
 #include "timer.h"
 
-#ifdef VTUNE_ANALYSIS
-    #include <ittnotify.h>
-#endif
-
 
 /*
 GAP Benchmark Suite
@@ -204,10 +200,6 @@ bool SSSPVerifier(const WGraph &g, NodeID source,
 
 
 int main(int argc, char* argv[]) {
-#ifdef VTUNE_ANALYSIS
-  __itt_pause();
-  printf("[INFO: VTUNE] Vtune analysis enabled. Only the kernel execution iterations will be profiled.\n");
-#endif
   CLDelta<WeightT> cli(argc, argv, "single-source shortest-path");
   if (!cli.ParseArgs())
     return -1;
@@ -221,9 +213,6 @@ int main(int argc, char* argv[]) {
   auto VerifierBound = [&vsp] (const WGraph &g, const pvector<WeightT> &dist) {
     return SSSPVerifier(g, vsp.PickNext(), dist);
   };
-#ifdef VTUNE_ANALYSIS
-  __itt_resume();
-#endif
   BenchmarkKernel(cli, g, SSSPBound, PrintSSSPStats, VerifierBound);
   return 0;
 }
