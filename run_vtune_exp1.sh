@@ -1,9 +1,9 @@
 #!/bin/bash
 
 GRAPH_DIR="/ssd1/songxin8/thesis/graph/gapbs/benchmark/graphs"
-NUM_THREADS=32
+NUM_THREADS=4
 export OMP_NUM_THREADS=${NUM_THREADS}
-RESULT_DIR="/ssd1/songxin8/thesis/graph/vtune/all_sweep_exp1/"
+RESULT_DIR="/ssd1/songxin8/thesis/graph/vtune/all_sweep_exp1_4threads/"
 
 declare -a GRAPH_LIST=("kron_28" "urand_28")
 #declare -a EXE_LIST=("cc" "bc" "pr" "sssp" "bfs" "tc")
@@ -25,11 +25,11 @@ run_vtune () {
 
   VTUNE_MEMACC_COMMON="/opt/intel/oneapi/vtune/2022.3.0/bin64/vtune -collect memory-access -start-paused \
       -knob sampling-interval=10 -knob analyze-mem-objects=true -knob analyze-openmp=true \
-      -data-limit=5000 -result-dir ${RESULT_DIR}/${OUTFILE}_memacc \
+      -data-limit=10000 -result-dir ${RESULT_DIR}/${OUTFILE}_memacc \
       --app-working-dir=/ssd1/songxin8/thesis/graph/gapbs"
 
   VTUNE_HOTSPOT_COMMON="/opt/intel/oneapi/vtune/2022.3.0/bin64/vtune -collect hotspots -start-paused \
-      -data-limit=5000 -result-dir ${RESULT_DIR}/${OUTFILE}_hotspot \
+      -data-limit=10000 -result-dir ${RESULT_DIR}/${OUTFILE}_hotspot \
       --app-working-dir=/ssd1/songxin8/thesis/graph/gapbs"
 
   case $EXE in
