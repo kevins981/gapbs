@@ -5,7 +5,8 @@ NUM_THREADS=4
 export OMP_NUM_THREADS=${NUM_THREADS}
 RESULT_DIR="/ssd1/songxin8/thesis/graph/vtune/all_sweep_exp1_4threads/"
 
-declare -a GRAPH_LIST=("kron_28" "urand_28")
+#declare -a GRAPH_LIST=("kron_28" "urand_28")
+declare -a GRAPH_LIST=("kron_28")
 #declare -a EXE_LIST=("cc" "bc" "pr" "sssp" "bfs" "tc")
 declare -a EXE_LIST=("cc" "bc" "pr" "bfs")
 
@@ -35,26 +36,32 @@ run_vtune () {
   case $EXE in
     "bfs")
       ${VTUNE_HOTSPOT_COMMON} -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n800
+      clean_cache
       ${VTUNE_MEMACC_COMMON}  -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n800
       ;;
     "pr")
       ${VTUNE_HOTSPOT_COMMON} -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -i1000 -t1e-4 -n28
+      clean_cache
       ${VTUNE_MEMACC_COMMON}  -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -i1000 -t1e-4 -n28
       ;;
     "cc")
       ${VTUNE_HOTSPOT_COMMON} -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n800
+      clean_cache
       ${VTUNE_MEMACC_COMMON}  -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n800
       ;;
     "bc")
       ${VTUNE_HOTSPOT_COMMON} -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -i4 -n16
+      clean_cache
       ${VTUNE_MEMACC_COMMON}  -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -i4 -n16
       ;;
     #"tc")
     #  ${VTUNE_HOTSPOT_COMMON} -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 ./${EXE} -f ${GRAPH_DIR}/${GRAPH}U.sg -n3
+    #  clean_cache
     #  ${VTUNE_MEMACC_COMMON}  -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 ./${EXE} -f ${GRAPH_DIR}/${GRAPH}U.sg -n3
     #  ;;
     #"sssp")
     #  ${VTUNE_HOTSPOT_COMMON} -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.wsg -n32 -d2
+    #  clean_cache
     #  ${VTUNE_MEMACC_COMMON}  -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.wsg -n32 -d2
     #  ;;
     *)
