@@ -137,6 +137,7 @@ void BenchmarkKernel(const CLApp &cli, const GraphT_ &g,
   }
 #ifdef VTUNE_ANALYSIS
    __itt_pause();
+  printf("[INFO: VTUNE] Vtune analysis stopped.\n");
 #endif
   PrintTime("Average Time", total_seconds / cli.num_trials());
 }
