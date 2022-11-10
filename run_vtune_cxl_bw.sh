@@ -6,9 +6,7 @@ RESULT_DIR="/ssd1/songxin8/thesis/graph/vtune/exp_cxl_bw/"
 NUM_THREADS=16
 export OMP_NUM_THREADS=${NUM_THREADS}
 
-#declare -a GRAPH_LIST=("kron_28" "urand_28")
 declare -a GRAPH_LIST=("kron_28")
-#declare -a EXE_LIST=("cc" "bc"  "sssp" "bfs" "tc")
 declare -a EXE_LIST=("bfs")
 
 export LD_PRELOAD="/usr/lib/x86_64-linux-gnu/debug/libstdc++.so.6.0.28"
@@ -20,6 +18,27 @@ clean_cache () {
   ./tools/clear_cpu_cache
   # clean page cache
   echo 3 > /proc/sys/vm/drop_caches
+}
+
+disable_numa() {
+  # turn off both numa
+  sudo service numad stop
+  NUMAD_OUT=$(systemctl is-active numad)
+  echo "numad service is now $NUMAD_OUT (should be not active)"
+  
+  echo 0 > /proc/sys/kernel/numa_balancing NUMA_BALANCING=$(cat /proc/sys/kernel/numa_balancing)
+  echo "numa_balancing is now $NUMA_BALANCING (should be 0)"
+}
+
+enable_numa() {
+  #service numad should be active
+  sudo service numad start
+  NUMAD_OUT=$(systemctl is-active numad)
+  echo "numad service is now $NUMAD_OUT (should be active)"
+  
+  echo 1 > /proc/sys/kernel/numa_balancing
+  NUMA_BALANCING=$(cat /proc/sys/kernel/numa_balancing)
+  echo "numa_balancing is now $NUMA_BALANCING (should be 1)"
 }
 
 run_vtune () {
@@ -237,17 +256,8 @@ run_vtune_autonuma () {
 
 make clean
 make -j
-#service numad should be active
-sudo service numad start
-NUMAD_OUT=$(systemctl is-active numad)
-echo "numad service is now $NUMAD_OUT (should be active)"
-
-echo 1 > /proc/sys/kernel/numa_balancing
-NUMA_BALANCING=$(cat /proc/sys/kernel/numa_balancing)
-echo "numa_balancing is now $NUMA_BALANCING (should be 1)"
-
+enable_numa
 echo "Number of threads: ${OMP_NUM_THREADS}" 
-
 for graph in "${GRAPH_LIST[@]}"
 do
   for exe in "${EXE_LIST[@]}"
@@ -259,15 +269,7 @@ done
 
 make clean
 make neigh_on_numa1 -j
-# turn off both numa
-sudo service numad stop
-NUMAD_OUT=$(systemctl is-active numad)
-echo "numad service is now $NUMAD_OUT (should be not active)"
-
-echo 0 > /proc/sys/kernel/numa_balancing
-NUMA_BALANCING=$(cat /proc/sys/kernel/numa_balancing)
-echo "numa_balancing is now $NUMA_BALANCING (should be 0)"
-
+disable_numa
 for graph in "${GRAPH_LIST[@]}"
 do
   for exe in "${EXE_LIST[@]}"

@@ -3,14 +3,11 @@
 # Run experiments that place all data structures on node 0 DRAM vs node 1 DRAM.
 
 GRAPH_DIR="/ssd1/songxin8/thesis/graph/gapbs/benchmark/graphs"
-NUM_THREADS=1
+NUM_THREADS=4
 export OMP_NUM_THREADS=${NUM_THREADS}
 RESULT_DIR="exp/test"
 
-#declare -a GRAPH_LIST=("kron_28" "urand_28")
 declare -a GRAPH_LIST=("kron_28")
-#declare -a EXE_LIST=("cc" "bc" "pr" "sssp" "bfs" "tc")
-#declare -a EXE_LIST=("cc" "bc" "pr" "bfs")
 declare -a EXE_LIST=("bfs")
 
 clean_up () {
@@ -20,7 +17,6 @@ clean_up () {
     kill $EXE_PID
     exit
 }
-
 
 clean_cache () { 
   echo "Clearing caches..."
@@ -36,7 +32,6 @@ run_gap () {
   EXE=$3
   NODE=$4
   echo "Start" > $OUTFILE
-  #numastat -v &>> $OUTFILE
   
   # Number of trials (-n) set specifically for graphs with 2^28 nodes and avg deg 16,
   # running on 32 threads. These -n's will ensure a total execution time between 10-20 minutes.
@@ -68,18 +63,18 @@ run_gap () {
       # This PID is needed for the numastat command
       EXE_PID=$(pgrep -P $TIME_PID)
       ;; 
-    #"sssp")
-    #  /usr/bin/time -v /usr/bin/numactl --membind=${NODE} --cpunodebind=0 \
-    #      ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.wsg -d2 -n1 &>> $OUTFILE &
-    #  TIME_PID=$! 
-    #  EXE_PID=$(pgrep -P $TIME_PID)
-    #  ;;
-    #"tc")
-    #  /usr/bin/time -v /usr/bin/numactl --membind=${NODE} --cpunodebind=0 \
-    #      ./${EXE} -f ${GRAPH_DIR}/${GRAPH}U.sg -n1 &>> $OUTFILE &
-    #  TIME_PID=$! 
-    #  EXE_PID=$(pgrep -P $TIME_PID)
-    #  ;;
+    "sssp")
+      /usr/bin/time -v /usr/bin/numactl --membind=${NODE} --cpunodebind=0 \
+          ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.wsg -d2 -n1 &>> $OUTFILE &
+      TIME_PID=$! 
+      EXE_PID=$(pgrep -P $TIME_PID)
+      ;;
+    "tc")
+      /usr/bin/time -v /usr/bin/numactl --membind=${NODE} --cpunodebind=0 \
+          ./${EXE} -f ${GRAPH_DIR}/${GRAPH}U.sg -n1 &>> $OUTFILE &
+      TIME_PID=$! 
+      EXE_PID=$(pgrep -P $TIME_PID)
+      ;;
     *)
       echo -n "Unknown executable $EXE"
       ;;

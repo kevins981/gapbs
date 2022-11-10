@@ -9,7 +9,6 @@ RESULT_DIR="exp/exp_wss"
 WSS_DIR="/ssd1/songxin8/thesis/wss/"
 
 declare -a GRAPH_LIST=("kron_28" "urand_28")
-#declare -a EXE_LIST=("cc" "bc" "pr" "sssp" "bfs" "tc")
 declare -a EXE_LIST=("cc" "bc" "pr" "bfs")
 
 clean_up () {

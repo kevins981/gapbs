@@ -5,9 +5,7 @@ NUM_THREADS=4
 export OMP_NUM_THREADS=${NUM_THREADS}
 RESULT_DIR="/ssd1/songxin8/thesis/graph/vtune/exp1_4threads_64GBDIMMs/"
 
-#declare -a GRAPH_LIST=("kron_28" "urand_28")
 declare -a GRAPH_LIST=("kron_28")
-#declare -a EXE_LIST=("cc" "bc" "pr" "sssp" "bfs" "tc")
 declare -a EXE_LIST=("sssp" "tc")
 
 clean_cache () { 
@@ -29,9 +27,9 @@ run_vtune () {
       -data-limit=10000 -result-dir ${RESULT_DIR}/${OUTFILE}_memacc \
       --app-working-dir=/ssd1/songxin8/thesis/graph/gapbs"
 
-  #VTUNE_HOTSPOT_COMMON="/opt/intel/oneapi/vtune/2022.3.0/bin64/vtune -collect hotspots -start-paused \
-  #    -data-limit=10000 -result-dir ${RESULT_DIR}/${OUTFILE}_hotspot \
-  #    --app-working-dir=/ssd1/songxin8/thesis/graph/gapbs"
+  VTUNE_HOTSPOT_COMMON="/opt/intel/oneapi/vtune/2022.3.0/bin64/vtune -collect hotspots -start-paused \
+      -data-limit=10000 -result-dir ${RESULT_DIR}/${OUTFILE}_hotspot \
+      --app-working-dir=/ssd1/songxin8/thesis/graph/gapbs"
 
   VTUNE_UARCH_COMMON="/opt/intel/oneapi/vtune/2022.3.0/bin64/vtune -collect uarch-exploration -start-paused \
       -knob sampling-interval=10 -knob collect-memory-bandwidth=true
@@ -41,58 +39,74 @@ run_vtune () {
 
   case $EXE in
     "bfs")
-      #${VTUNE_HOTSPOT_COMMON} -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n330
-      #clean_cache
-      ${VTUNE_MEMACC_COMMON}  -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n330
-      #clean_cache
-      #${VTUNE_UARCH_COMMON}  -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n330
+      ${VTUNE_HOTSPOT_COMMON} -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 \
+          ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n330
+      clean_cache
+      ${VTUNE_MEMACC_COMMON}  -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 \
+          ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n330
+      clean_cache
+      ${VTUNE_UARCH_COMMON}  -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 \
+          ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n330
       ;;
     "pr")
-      #${VTUNE_HOTSPOT_COMMON} -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -i1000 -t1e-4 -n8
-      #clean_cache
-      ${VTUNE_MEMACC_COMMON}  -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -i1000 -t1e-4 -n8
-      #clean_cache
-      #${VTUNE_UARCH_COMMON}  -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -i1000 -t1e-4 -n8
+      ${VTUNE_HOTSPOT_COMMON} -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 \
+          ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -i1000 -t1e-4 -n8
+      clean_cache
+      ${VTUNE_MEMACC_COMMON}  -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 \
+          ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -i1000 -t1e-4 -n8
+      clean_cache
+      ${VTUNE_UARCH_COMMON}  -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 \
+          ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -i1000 -t1e-4 -n8
       ;;
     "cc")
-      #${VTUNE_HOTSPOT_COMMON} -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n188
-      #clean_cache
-      ${VTUNE_MEMACC_COMMON}  -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n188
-      #clean_cache
-      #${VTUNE_UARCH_COMMON}  -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n188
+      ${VTUNE_HOTSPOT_COMMON} -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 \
+          ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n188
+      clean_cache
+      ${VTUNE_MEMACC_COMMON}  -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 \
+          ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n188
+      clean_cache
+      ${VTUNE_UARCH_COMMON}  -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 \
+          ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n188
       ;;
     "bc")
-      #${VTUNE_HOTSPOT_COMMON} -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -i4 -n4
-      #clean_cache
-      ${VTUNE_MEMACC_COMMON}  -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -i4 -n4
-      #clean_cache
-      #${VTUNE_UARCH_COMMON}  -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -i4 -n4
+      ${VTUNE_HOTSPOT_COMMON} -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 \
+          ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -i4 -n4
+      clean_cache
+      ${VTUNE_MEMACC_COMMON}  -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 \
+          ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -i4 -n4
+      clean_cache
+      ${VTUNE_UARCH_COMMON}  -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 \
+          ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -i4 -n4
       ;;
     "sssp")
-      #${VTUNE_HOTSPOT_COMMON} -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.wsg -d2 -n1
-
-      #clean_cache
-
-      ${VTUNE_MEMACC_COMMON}  -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.wsg -d2 -n100000 &
+      ${VTUNE_HOTSPOT_COMMON} -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 \
+          ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.wsg -d2 -n1
+      clean_cache
+      ${VTUNE_MEMACC_COMMON}  -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 \
+          ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.wsg -d2 -n100000 &
       sleep 900
       /opt/intel/oneapi/vtune/2022.3.0/bin64/vtune -command stop -r ${RESULT_DIR}/${OUTFILE}_memacc
 
       clean_cache
 
-      ${VTUNE_UARCH_COMMON}  -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.wsg -d2 -n100000 &
+      ${VTUNE_UARCH_COMMON}  -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 \
+          ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.wsg -d2 -n100000 &
       sleep 900
       /opt/intel/oneapi/vtune/2022.3.0/bin64/vtune -command stop -r ${RESULT_DIR}/${OUTFILE}_uarch
       ;;
     "tc")
-      #${VTUNE_HOTSPOT_COMMON} -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 ./${EXE} -f ${GRAPH_DIR}/${GRAPH}U.sg -n1 
-      #clean_cache
-      ${VTUNE_MEMACC_COMMON}  -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 ./${EXE} -f ${GRAPH_DIR}/${GRAPH}U.sg -n100000 &
+      ${VTUNE_HOTSPOT_COMMON} -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 \
+          ./${EXE} -f ${GRAPH_DIR}/${GRAPH}U.sg -n1 
+      clean_cache
+      ${VTUNE_MEMACC_COMMON}  -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 \
+          ./${EXE} -f ${GRAPH_DIR}/${GRAPH}U.sg -n100000 &
       sleep 900
       /opt/intel/oneapi/vtune/2022.3.0/bin64/vtune -command stop -r ${RESULT_DIR}/${OUTFILE}_memacc
 
       clean_cache
 
-      ${VTUNE_UARCH_COMMON}  -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 ./${EXE} -f ${GRAPH_DIR}/${GRAPH}U.sg -n100000 &
+      ${VTUNE_UARCH_COMMON}  -- /usr/bin/numactl --membind=${NODE} --cpunodebind=0 \
+          ./${EXE} -f ${GRAPH_DIR}/${GRAPH}U.sg -n100000 &
       sleep 900
       /opt/intel/oneapi/vtune/2022.3.0/bin64/vtune -command stop -r ${RESULT_DIR}/${OUTFILE}_uarch
       ;;
@@ -121,8 +135,8 @@ do
   do
     clean_cache
     run_vtune "${exe}_${graph}_allnode0_${NUM_THREADS}threads" $graph $exe 0
-    #clean_cache
-    #run_vtune "${exe}_${graph}_allnode1_${NUM_THREADS}threads" $graph $exe 1
+    clean_cache
+    run_vtune "${exe}_${graph}_allnode1_${NUM_THREADS}threads" $graph $exe 1
   done
 done
 

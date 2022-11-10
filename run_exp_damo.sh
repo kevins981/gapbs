@@ -1,16 +1,12 @@
 #!/bin/bash
 
-# Run experiments that place all data structures on node 0 DRAM vs node 1 DRAM.
-
 GRAPH_DIR="/ssd1/songxin8/thesis/graph/gapbs/benchmark/graphs"
 NUM_THREADS=4
 export OMP_NUM_THREADS=${NUM_THREADS}
 RESULT_DIR="exp/exp_damo" 
 DAMO_EXE="/ssd1/songxin8/anaconda3/envs/py36_damo/bin/damo"
 
-#declare -a GRAPH_LIST=("kron_28" "urand_28")
 declare -a GRAPH_LIST=("kron_28")
-#declare -a EXE_LIST=("cc" "bc" "pr" "bfs")
 declare -a EXE_LIST=("pr" "bfs")
 
 clean_up () {

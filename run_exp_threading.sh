@@ -5,9 +5,7 @@
 GRAPH_DIR="/ssd1/songxin8/thesis/graph/gapbs/benchmark/graphs"
 RESULT_DIR="exp/exp_threading"
 
-#declare -a GRAPH_LIST=("kron_28" "urand_28")
 declare -a GRAPH_LIST=("kron_28")
-#declare -a EXE_LIST=("cc" "bc" "pr" "sssp" "bfs" "tc")
 declare -a EXE_LIST=("bfs")
 declare -a THREAD_LIST=("32" "16" "8" "4" "2" "1")
 
