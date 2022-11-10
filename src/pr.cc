@@ -96,6 +96,11 @@ bool PRVerifier(const Graph &g, const pvector<ScoreT> &scores,
 
 
 int main(int argc, char* argv[]) {
+#ifdef VTUNE_ANALYSIS
+  // vtune should be paused when launched via the -start-paused vtunes option
+  __itt_resume();
+  printf("[INFO: VTUNE] Vtune analysis resumed.\n");
+#endif
   CLPageRank cli(argc, argv, "pagerank", 1e-4, 20);
   if (!cli.ParseArgs())
     return -1;

@@ -129,6 +129,11 @@ bool TCVerifier(const Graph &g, size_t test_total) {
 
 
 int main(int argc, char* argv[]) {
+#ifdef VTUNE_ANALYSIS
+  // vtune should be paused when launched via the -start-paused vtunes option
+  __itt_resume();
+  printf("[INFO: VTUNE] Vtune analysis resumed.\n");
+#endif
   CLApp cli(argc, argv, "triangle count");
   if (!cli.ParseArgs())
     return -1;

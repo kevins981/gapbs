@@ -33,6 +33,7 @@ Various helper functions to ease writing of kernels
 
 // Default type signatures for commonly used types
 typedef int32_t NodeID;
+//typedef int64_t NodeID;
 typedef int32_t WeightT;
 typedef NodeWeight<NodeID, WeightT> WNode;
 
@@ -107,11 +108,6 @@ void BenchmarkKernel(const CLApp &cli, const GraphT_ &g,
   g.PrintStats();
   double total_seconds = 0;
   Timer trial_timer;
-#ifdef VTUNE_ANALYSIS
-  // vtune should be paused when launched via the -start-paused vtunes option
-  __itt_resume();
-  printf("[INFO: VTUNE] Vtune analysis resumed.\n");
-#endif
   for (int iter=0; iter < cli.num_trials(); iter++) {
     trial_timer.Start();
     auto result = kernel(g);
