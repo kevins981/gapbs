@@ -3,10 +3,11 @@
 GRAPH_DIR="/ssd1/songxin8/thesis/graph/gapbs/benchmark/graphs"
 NUM_THREADS=16
 export OMP_NUM_THREADS=${NUM_THREADS}
-RESULT_DIR="exp/exp_cxl_bw_5_19"
+#RESULT_DIR="exp/exp_tpp_vs_neighonnode1"
+RESULT_DIR="exp/test"
 
 declare -a GRAPH_LIST=("kron_28")
-declare -a EXE_LIST=("bfs" "cc")
+declare -a EXE_LIST=("bfs")
 
 clean_up () {
     echo "Cleaning up. Kernel PID is $EXE_PID, numastat PID is $LOG_PID."
@@ -16,17 +17,28 @@ clean_up () {
     exit
 }
 
-enable_numa () {
-  sudo service numad start
+enable_tpp () {
+  sudo service numad stop
   NUMAD_OUT=$(systemctl is-active numad)
-  echo "numad service is now $NUMAD_OUT (should be active)"
+  echo "numad service is now $NUMAD_OUT (should be inactive)"
+  
+  echo 2 > /proc/sys/kernel/numa_balancing
+  NUMA_BALANCING=$(cat /proc/sys/kernel/numa_balancing)
+  echo "numa_balancing is now $NUMA_BALANCING (should be 2 for TPP)"
+}
+
+enable_autonuma () {
+  # numad will override autoNUMA, so stop it
+  sudo service numad stop
+  NUMAD_OUT=$(systemctl is-active numad)
+  echo "numad service is now $NUMAD_OUT (should be inactive)"
   
   echo 1 > /proc/sys/kernel/numa_balancing
   NUMA_BALANCING=$(cat /proc/sys/kernel/numa_balancing)
   echo "numa_balancing is now $NUMA_BALANCING (should be 1)"
 }
 
-disable_numa () {
+disable_autonuma () {
   # turn off both numa
   sudo service numad stop
   NUMAD_OUT=$(systemctl is-active numad)
@@ -44,6 +56,7 @@ clean_cache () {
   # clean page cache
   echo 3 > /proc/sys/vm/drop_caches
 }
+
 run_gap () { 
   OUTFILE=$1 #first argument
   GRAPH=$2
@@ -53,7 +66,8 @@ run_gap () {
   case $EXE in
     "bfs")
       /usr/bin/time -v /usr/bin/numactl --membind=0 --cpunodebind=0 \
-          ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n200 &>> $OUTFILE &
+          ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n200 &
+          #./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n200 &>> $OUTFILE &
       TIME_PID=$! 
       EXE_PID=$(pgrep -P $TIME_PID)
       ;;
@@ -127,7 +141,8 @@ run_gap_autonuma () {
       ;;
     "bfs")
       /usr/bin/time -v /usr/bin/numactl --cpunodebind=0 \
-          ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n100 &>> $OUTFILE &
+          ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n200 &
+          #./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n200 &>> $OUTFILE &
       TIME_PID=$! 
       EXE_PID=$(pgrep -P $TIME_PID)
       ;;
@@ -180,30 +195,48 @@ trap clean_up SIGHUP SIGINT SIGTERM
 
 mkdir -p $RESULT_DIR
 
-# not specifying where to allocate. Let AutoNUMA decide 
+# TPP
 make clean -j
 make -j
-enable_numa 
+enable_tpp 
 
 for graph in "${GRAPH_LIST[@]}"
 do
   for exe in "${EXE_LIST[@]}"
   do
     clean_cache
-    run_gap_autonuma "${RESULT_DIR}/${exe}_${graph}_${NUM_THREADS}threads_autonuma" $graph $exe
+    export OMP_NUM_THREADS=${NUM_THREADS}
+    echo "NUM thread: $OMP_NUM_THREADS"
+    #run_gap_autonuma "${RESULT_DIR}/${exe}_${graph}_${NUM_THREADS}threads_tpp_both_numad_autonuma_on" $graph $exe
+    run_gap_autonuma "${RESULT_DIR}/${exe}_${graph}_${NUM_THREADS}threads_tpp_only_autonuma" $graph $exe
+    #run_gap_autonuma "${RESULT_DIR}/${exe}_${graph}_${NUM_THREADS}threads_tpp_only_numad" $graph $exe
   done
 done
 
+## AutoNUMA. not specifying where to allocate. Let AutoNUMA decide 
+#make clean -j
+#make -j
+#enable_autonuma 
+#
+#for graph in "${GRAPH_LIST[@]}"
+#do
+#  for exe in "${EXE_LIST[@]}"
+#  do
+#    clean_cache
+#    run_gap_autonuma "${RESULT_DIR}/${exe}_${graph}_${NUM_THREADS}threads_autonuma" $graph $exe
+#  done
+#done
+#
 # allocate neighbors array on node 1
-make clean -j
-make neigh_on_numa1 -j
-disable_numa 
-
-for graph in "${GRAPH_LIST[@]}"
-do
-  for exe in "${EXE_LIST[@]}"
-  do
-    clean_cache
-    run_gap "${RESULT_DIR}/${exe}_${graph}_${NUM_THREADS}threads_neigh_on_numa1" $graph $exe
-  done
-done
+#make clean -j
+#make neigh_on_numa1 -j
+#disable_autonuma 
+#
+#for graph in "${GRAPH_LIST[@]}"
+#do
+#  for exe in "${EXE_LIST[@]}"
+#  do
+#    clean_cache
+#    run_gap "${RESULT_DIR}/${exe}_${graph}_${NUM_THREADS}threads_neigh_on_numa1" $graph $exe
+#  done
+#done

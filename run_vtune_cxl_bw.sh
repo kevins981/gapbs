@@ -1,5 +1,7 @@
 #!/bin/bash
 
+#TODO: run each GAP kernel for a fixed number of iterations, instead of killing vtunes
+
 GRAPH_DIR="/ssd1/songxin8/thesis/graph/gapbs/benchmark/graphs"
 RESULT_DIR="/ssd1/songxin8/thesis/graph/vtune/exp_cxl_bw/"
 
@@ -20,21 +22,20 @@ clean_cache () {
   echo 3 > /proc/sys/vm/drop_caches
 }
 
-disable_numa() {
+disable_autonuma() {
   # turn off both numa
   sudo service numad stop
   NUMAD_OUT=$(systemctl is-active numad)
   echo "numad service is now $NUMAD_OUT (should be not active)"
-  
-  echo 0 > /proc/sys/kernel/numa_balancing NUMA_BALANCING=$(cat /proc/sys/kernel/numa_balancing)
+  echo 0 > /proc/sys/kernel/numa_balancing 
+  NUMA_BALANCING=$(cat /proc/sys/kernel/numa_balancing)
   echo "numa_balancing is now $NUMA_BALANCING (should be 0)"
 }
 
-enable_numa() {
-  #service numad should be active
-  sudo service numad start
+enable_autonuma() {
+  sudo service numad stop
   NUMAD_OUT=$(systemctl is-active numad)
-  echo "numad service is now $NUMAD_OUT (should be active)"
+  echo "numad service is now $NUMAD_OUT (should be inactive)"
   
   echo 1 > /proc/sys/kernel/numa_balancing
   NUMA_BALANCING=$(cat /proc/sys/kernel/numa_balancing)
@@ -51,9 +52,9 @@ run_vtune () {
       -data-limit=10000 -result-dir ${RESULT_DIR}/${OUTFILE}_memacc \
       --app-working-dir=/ssd1/songxin8/thesis/graph/gapbs"
 
-  #VTUNE_HOTSPOT_COMMON="/opt/intel/oneapi/vtune/2022.3.0/bin64/vtune -collect hotspots -start-paused \
-  #    -data-limit=10000 -result-dir ${RESULT_DIR}/${OUTFILE}_hotspot \
-  #    --app-working-dir=/ssd1/songxin8/thesis/graph/gapbs"
+  VTUNE_HOTSPOT_COMMON="/opt/intel/oneapi/vtune/2022.3.0/bin64/vtune -collect hotspots -start-paused \
+      -data-limit=10000 -result-dir ${RESULT_DIR}/${OUTFILE}_hotspot \
+      --app-working-dir=/ssd1/songxin8/thesis/graph/gapbs"
 
   VTUNE_UARCH_COMMON="/opt/intel/oneapi/vtune/2022.3.0/bin64/vtune -collect uarch-exploration -start-paused \
       -knob sampling-interval=10 -knob collect-memory-bandwidth=true
@@ -64,22 +65,20 @@ run_vtune () {
 
   case $EXE in
     "bfs")
-      #${VTUNE_HOTSPOT_COMMON} -- ${NUMACTL_COMMOM} ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n1000000 &
+      #${VTUNE_HOTSPOT_COMMON} -- ${NUMACTL_COMMOM} ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n200 
       #clean_cache
 
-      ${VTUNE_MEMACC_COMMON}  -- ${NUMACTL_COMMOM} ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n1000000 &
-      sleep 600
-      /opt/intel/oneapi/vtune/2022.3.0/bin64/vtune -command stop -r ${RESULT_DIR}/${OUTFILE}_memacc
+      ${VTUNE_MEMACC_COMMON}  -- ${NUMACTL_COMMOM} ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n200 &> ${RESULT_DIR}/${OUTFILE}_memacc_log
       clean_cache
 
-      #${VTUNE_UARCH_COMMON}  -- ${NUMACTL_COMMOM} ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n1000000 &
+      #${VTUNE_UARCH_COMMON}  -- ${NUMACTL_COMMOM} ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n200
       ;;
     "pr")
       #${VTUNE_HOTSPOT_COMMON} -- ${NUMACTL_COMMOM} ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -i1000 -t1e-4 -n800000  &
       #clean_cache
 
-      ${VTUNE_MEMACC_COMMON}  -- ${NUMACTL_COMMOM} ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -i1000 -t1e-4 -n800000  &
-      sleep 600
+      ${VTUNE_MEMACC_COMMON}  -- ${NUMACTL_COMMOM} ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -i1000 -t1e-4 -n800000 ${RESULT_DIR}/${OUTFILE}_memacc_log &
+      sleep 900
       /opt/intel/oneapi/vtune/2022.3.0/bin64/vtune -command stop -r ${RESULT_DIR}/${OUTFILE}_memacc
       clean_cache
 
@@ -90,7 +89,7 @@ run_vtune () {
       #clean_cache
 
       ${VTUNE_MEMACC_COMMON}  -- ${NUMACTL_COMMOM} ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n18800000  &
-      sleep 600
+      sleep 900
       /opt/intel/oneapi/vtune/2022.3.0/bin64/vtune -command stop -r ${RESULT_DIR}/${OUTFILE}_memacc
       clean_cache
 
@@ -101,7 +100,7 @@ run_vtune () {
       #clean_cache
 
       ${VTUNE_MEMACC_COMMON}  -- ${NUMACTL_COMMOM} ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -i4 -n400000  &
-      sleep 600
+      sleep 900
       /opt/intel/oneapi/vtune/2022.3.0/bin64/vtune -command stop -r ${RESULT_DIR}/${OUTFILE}_memacc
       clean_cache
 
@@ -112,12 +111,12 @@ run_vtune () {
       #clean_cache
 
       ${VTUNE_MEMACC_COMMON}  -- ${NUMACTL_COMMOM} ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.wsg -d2 -n100000 &
-      sleep 600
+      sleep 900
       /opt/intel/oneapi/vtune/2022.3.0/bin64/vtune -command stop -r ${RESULT_DIR}/${OUTFILE}_memacc
       clean_cache
 
       #${VTUNE_UARCH_COMMON}  -- ${NUMACTL_COMMOM} ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.wsg -d2 -n100000 &
-      #sleep 600
+      #sleep 900
       #/opt/intel/oneapi/vtune/2022.3.0/bin64/vtune -command stop -r ${RESULT_DIR}/${OUTFILE}_uarch
       ;;
     "tc")
@@ -125,12 +124,12 @@ run_vtune () {
       #clean_cache
 
       ${VTUNE_MEMACC_COMMON}  -- ${NUMACTL_COMMOM} ./${EXE} -f ${GRAPH_DIR}/${GRAPH}U.sg -n100000 &
-      sleep 600
+      sleep 900
       /opt/intel/oneapi/vtune/2022.3.0/bin64/vtune -command stop -r ${RESULT_DIR}/${OUTFILE}_memacc
       clean_cache
 
       #${VTUNE_UARCH_COMMON}  -- ${NUMACTL_COMMOM} ./${EXE} -f ${GRAPH_DIR}/${GRAPH}U.sg -n100000 &
-      #sleep 600
+      #sleep 900
       #/opt/intel/oneapi/vtune/2022.3.0/bin64/vtune -command stop -r ${RESULT_DIR}/${OUTFILE}_uarch
       ;;
 
@@ -166,25 +165,20 @@ run_vtune_autonuma () {
 
   case $EXE in
     "bfs")
-      #${VTUNE_HOTSPOT_COMMON} -- ${NUMACTL_COMMOM} ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n1000000 &
+      #${VTUNE_HOTSPOT_COMMON} -- ${NUMACTL_COMMOM} ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n200
       #clean_cache
 
-      ${VTUNE_MEMACC_COMMON} -- ${NUMACTL_COMMOM} ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n1000000 &
-      echo "command is" 
-      echo "${VTUNE_MEMACC_COMMON} -- ${NUMACTL_COMMOM} ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n1000000 &"
-
-      sleep 600
-      /opt/intel/oneapi/vtune/2022.3.0/bin64/vtune -command stop -r ${RESULT_DIR}/${OUTFILE}_memacc
+      ${VTUNE_MEMACC_COMMON} -- ${NUMACTL_COMMOM} ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n200
       clean_cache
 
-      #${VTUNE_UARCH_COMMON}  -- ${NUMACTL_COMMOM} ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n1000000 &
+      #${VTUNE_UARCH_COMMON}  -- ${NUMACTL_COMMOM} ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n200
       ;;
     "pr")
       #${VTUNE_HOTSPOT_COMMON} -- ${NUMACTL_COMMOM} ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -i1000 -t1e-4 -n800000  &
       #clean_cache
 
       ${VTUNE_MEMACC_COMMON}  -- ${NUMACTL_COMMOM} ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -i1000 -t1e-4 -n800000  &
-      sleep 600
+      sleep 900
       /opt/intel/oneapi/vtune/2022.3.0/bin64/vtune -command stop -r ${RESULT_DIR}/${OUTFILE}_memacc
       clean_cache
 
@@ -195,7 +189,7 @@ run_vtune_autonuma () {
       #clean_cache
 
       ${VTUNE_MEMACC_COMMON}  -- ${NUMACTL_COMMOM} ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n18800000  &
-      sleep 600
+      sleep 900
       /opt/intel/oneapi/vtune/2022.3.0/bin64/vtune -command stop -r ${RESULT_DIR}/${OUTFILE}_memacc
       clean_cache
 
@@ -206,7 +200,7 @@ run_vtune_autonuma () {
       #clean_cache
 
       ${VTUNE_MEMACC_COMMON}  -- ${NUMACTL_COMMOM} ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -i4 -n400000  &
-      sleep 600
+      sleep 900
       /opt/intel/oneapi/vtune/2022.3.0/bin64/vtune -command stop -r ${RESULT_DIR}/${OUTFILE}_memacc
       clean_cache
 
@@ -217,12 +211,12 @@ run_vtune_autonuma () {
       #clean_cache
 
       ${VTUNE_MEMACC_COMMON}  -- ${NUMACTL_COMMOM} ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.wsg -d2 -n100000 &
-      sleep 600
+      sleep 900
       /opt/intel/oneapi/vtune/2022.3.0/bin64/vtune -command stop -r ${RESULT_DIR}/${OUTFILE}_memacc
       clean_cache
 
       #${VTUNE_UARCH_COMMON}  -- ${NUMACTL_COMMOM} ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.wsg -d2 -n100000 &
-      #sleep 600
+      #sleep 900
       #/opt/intel/oneapi/vtune/2022.3.0/bin64/vtune -command stop -r ${RESULT_DIR}/${OUTFILE}_uarch
       ;;
     "tc")
@@ -230,12 +224,12 @@ run_vtune_autonuma () {
       #clean_cache
 
       ${VTUNE_MEMACC_COMMON}  -- ${NUMACTL_COMMOM} ./${EXE} -f ${GRAPH_DIR}/${GRAPH}U.sg -n100000 &
-      sleep 600
+      sleep 900
       /opt/intel/oneapi/vtune/2022.3.0/bin64/vtune -command stop -r ${RESULT_DIR}/${OUTFILE}_memacc
       clean_cache
 
       #${VTUNE_UARCH_COMMON}  -- ${NUMACTL_COMMOM} ./${EXE} -f ${GRAPH_DIR}/${GRAPH}U.sg -n100000 &
-      #sleep 600
+      #sleep 900
       #/opt/intel/oneapi/vtune/2022.3.0/bin64/vtune -command stop -r ${RESULT_DIR}/${OUTFILE}_uarch
       ;;
 
@@ -254,9 +248,26 @@ run_vtune_autonuma () {
 
 ./setup.sh
 
+mkdir -p $RESULT_DIR
+
+# Everything on local node 0 DRAM
 make clean
 make -j
-enable_numa
+disable_autonuma
+for graph in "${GRAPH_LIST[@]}"
+do
+  for exe in "${EXE_LIST[@]}"
+  do
+    clean_cache
+    run_vtune "${exe}_${graph}_${NUM_THREADS}threads_all_on_node0" $graph $exe
+  done
+done
+
+
+# AutoNUMA
+make clean
+make -j
+enable_autonuma
 echo "Number of threads: ${OMP_NUM_THREADS}" 
 for graph in "${GRAPH_LIST[@]}"
 do
@@ -267,9 +278,10 @@ do
   done
 done
 
+# Neighbors array on node 1
 make clean
 make neigh_on_numa1 -j
-disable_numa
+disable_autonuma
 for graph in "${GRAPH_LIST[@]}"
 do
   for exe in "${EXE_LIST[@]}"
