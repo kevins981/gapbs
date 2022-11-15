@@ -5,7 +5,7 @@ CXX_FLAGS += -std=c++11 -O3 -Wall -g
 PAR_FLAG = -fopenmp
 LIBS = -lnuma
 
-VTUNE_HOME= /opt/intel/oneapi/vtune/2022.3.0
+VTUNE_HOME= /opt/intel/oneapi/vtune/latest
 
 ifneq ($(VTUNE_HOME),)
   CXX_FLAGS +=  -DVTUNE_ANALYSIS=1
