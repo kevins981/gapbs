@@ -6,10 +6,9 @@
 GRAPH_DIR="/ssd1/songxin8/thesis/graph/gapbs/benchmark/graphs"
 NUM_THREADS=16
 export OMP_NUM_THREADS=${NUM_THREADS}
-RESULT_DIR="exp/exp_tpp_large/" 
+RESULT_DIR="exp/exp_tpp_large2/" 
 declare -a GRAPH_LIST=("kron_g30_k32") 
-#declare -a EXE_LIST=("bfs" "pr" "bc" "cc") 
-declare -a EXE_LIST=("bfs")
+declare -a EXE_LIST=("bfs" "pr" "bc" "cc") 
 
 clean_up () {
     echo "Cleaning up. Kernel PID is $EXE_PID, numastat PID is $NUMASTAT_PID, top PID is $TOP_PID."
@@ -75,33 +74,43 @@ run_gap () {
   OUTFILE=$1 #first argument
   GRAPH=$2
   EXE=$3
+  CONFIG=$4
+
+  if [[ "$CONFIG" == "ALL_LOCAL" ]]; then
+    # All local config: place both data and compute on node 1
+    CPUNODEBIND=1
+    MEMBIND=1
+  elif [[ "$CONFIG" == "EDGES_ON_REMOTE" ]]; then
+    # place edges array on node 1, rest on node 0
+    CPUNODEBIND=0
+    MEMBIND=0
+  else
+    echo "Error! Undefined configuration $CONFIG"
+    exit 1
+  fi
+
   echo "Start" > $OUTFILE
+
+  COMMAND_COMMON="/usr/bin/time -v /usr/bin/numactl --membind=${MEMBIND} --cpunodebind=${CPUNODEBIND}"
   
   case $EXE in
     "bfs")
-      /usr/bin/time -v /usr/bin/numactl --membind=0 --cpunodebind=0 \
-          ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n360 &>> $OUTFILE &
+      $COMMAND_COMMON ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n360 &>> $OUTFILE &
       TIME_PID=$! 
       EXE_PID=$(pgrep -P $TIME_PID)
       ;;
     "pr")
-      /usr/bin/time -v /usr/bin/numactl --membind=0 --cpunodebind=0 \
-          ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -i1000 -t1e-4 -n8 &>> $OUTFILE &
-          #./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -i1000 -t1e-4 -n1 &>> $OUTFILE &
+      $COMMAND_COMMON ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -i1000 -t1e-4 -n8 &>> $OUTFILE &
       TIME_PID=$! 
       EXE_PID=$(pgrep -P $TIME_PID)
       ;;
     "cc")
-      /usr/bin/time -v /usr/bin/numactl --membind=0 --cpunodebind=0 \
-          ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n260 &>> $OUTFILE &
-          #./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n1 &>> $OUTFILE &
+      $COMMAND_COMMON ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n260 &>> $OUTFILE &
       TIME_PID=$! 
       EXE_PID=$(pgrep -P $TIME_PID)
       ;;
     "bc")
-      /usr/bin/time -v /usr/bin/numactl --membind=0 --cpunodebind=0 \
-          ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -i4 -n4 &>> $OUTFILE &
-          #./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -i4 -n1 &>> $OUTFILE &
+      $COMMAND_COMMON ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -i4 -n4 &>> $OUTFILE &
       # PID of time command
       TIME_PID=$! 
       # get PID of actual GAP kernel, which is a child of time. 
@@ -109,14 +118,12 @@ run_gap () {
       EXE_PID=$(pgrep -P $TIME_PID)
       ;; 
     "sssp")
-      /usr/bin/time -v /usr/bin/numactl --membind=0 --cpunodebind=0 \
-          ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.wsg -d2 -n1 &>> $OUTFILE &
+      $COMMAND_COMMON ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.wsg -d2 -n1 &>> $OUTFILE &
       TIME_PID=$! 
       EXE_PID=$(pgrep -P $TIME_PID)
       ;;
     "tc")
-      /usr/bin/time -v /usr/bin/numactl --membind=0 --cpunodebind=0 \
-          ./${EXE} -f ${GRAPH_DIR}/${GRAPH}U.sg -n1 &>> $OUTFILE &
+      $COMMAND_COMMON ./${EXE} -f ${GRAPH_DIR}/${GRAPH}U.sg -n1 &>> $OUTFILE &
       TIME_PID=$! 
       EXE_PID=$(pgrep -P $TIME_PID)
       ;;
@@ -129,7 +136,7 @@ run_gap () {
   echo "start" > ${OUTFILE}_numastat
   while true; do numastat -p $EXE_PID >> ${OUTFILE}_numastat; sleep 5; done &
   NUMASTAT_PID=$!
-  top -b -d 5 -1 -p $EXE_PID > ${OUTFILE}_top_log &
+  top -b -d 10 -1 -p $EXE_PID > ${OUTFILE}_top_log &
   TOP_PID=$!
 
   echo "Waiting for GAP kernel to complete (PID is ${EXE_PID}). numastat is logged into ${OUTFILE}_numastat, PID is ${NUMASTAT_PID}. Top log PID is ${TOP_PID}" 
@@ -225,7 +232,7 @@ trap clean_up SIGHUP SIGINT SIGTERM
 
 mkdir -p $RESULT_DIR
 
-# TPP
+## TPP
 #make clean -j
 #make -j
 #enable_tpp 
@@ -241,44 +248,44 @@ mkdir -p $RESULT_DIR
 #  done
 #done
 
-# AutoNUMA. not specifying where to allocate. Let AutoNUMA decide 
+## AutoNUMA. not specifying where to allocate. Let AutoNUMA decide 
+#make clean -j
+#make -j
+#enable_autonuma 
+#
+#for graph in "${GRAPH_LIST[@]}"
+#do
+#  for exe in "${EXE_LIST[@]}"
+#  do
+#    clean_cache
+#    run_gap_autonuma "${RESULT_DIR}/${exe}_${graph}_${NUM_THREADS}threads_autonuma" $graph $exe
+#  done
+#done
+
+# allocate neighbors array on node 1
 make clean -j
-make -j
-enable_autonuma 
+make neigh_on_numa1 -j
+disable_autonuma 
 
 for graph in "${GRAPH_LIST[@]}"
 do
   for exe in "${EXE_LIST[@]}"
   do
     clean_cache
-    run_gap_autonuma "${RESULT_DIR}/${exe}_${graph}_${NUM_THREADS}threads_autonuma" $graph $exe
+    run_gap "${RESULT_DIR}/${exe}_${graph}_${NUM_THREADS}threads_edgesonremote" $graph $exe "EDGES_ON_REMOTE"
   done
 done
 
-## allocate neighbors array on node 1
-#make clean -j
-#make neigh_on_numa1 -j
-#disable_autonuma 
-#
-#for graph in "${GRAPH_LIST[@]}"
-#do
-#  for exe in "${EXE_LIST[@]}"
-#  do
-#    clean_cache
-#    run_gap "${RESULT_DIR}/${exe}_${graph}_${NUM_THREADS}threads_neigh_on_numa1" $graph $exe
-#  done
-#done
+# allocate all data on node 0
+make clean -j
+make -j
+disable_autonuma 
 
-## allocate all data on node 0
-#make clean -j
-#make -j
-#disable_autonuma 
-#
-#for graph in "${GRAPH_LIST[@]}"
-#do
-#  for exe in "${EXE_LIST[@]}"
-#  do
-#    clean_cache
-#    run_gap "${RESULT_DIR}/${exe}_${graph}_${NUM_THREADS}threads_all_on_node0" $graph $exe
-#  done
-#done
+for graph in "${GRAPH_LIST[@]}"
+do
+  for exe in "${EXE_LIST[@]}"
+  do
+    clean_cache
+    run_gap "${RESULT_DIR}/${exe}_${graph}_${NUM_THREADS}threads_alllocal" $graph $exe "ALL_LOCAL"
+  done
+done
