@@ -49,6 +49,9 @@ run_vtune () {
   GRAPH=$2
   EXE=$3
 
+  export OMP_NUM_THREADS=${NUM_THREADS}
+  echo "OMP_NUM_THREADS is $OMP_NUM_THREADS"
+
   VTUNE_MEMACC_COMMON="/opt/intel/oneapi/vtune/latest/bin64/vtune -collect memory-access -start-paused \
       -knob sampling-interval=10 -knob analyze-mem-objects=true -knob analyze-openmp=true \
       -data-limit=10000 -result-dir ${RESULT_DIR}/${OUTFILE}_memacc \
@@ -70,8 +73,9 @@ run_vtune () {
       #${VTUNE_HOTSPOT_COMMON} -- ${NUMACTL_COMMOM} ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n200 
       #clean_cache
 
-      ${VTUNE_MEMACC_COMMON}  -- ${NUMACTL_COMMOM} ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n360 \
-          &> ${RESULT_DIR}/${OUTFILE}_memacc_log
+      echo "${VTUNE_MEMACC_COMMON}  -- ${NUMACTL_COMMOM} ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n360"
+      #${VTUNE_MEMACC_COMMON}  -- ${NUMACTL_COMMOM} ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n360 \
+      #    &> ${RESULT_DIR}/${OUTFILE}_memacc_log
       clean_cache
 
       #${VTUNE_UARCH_COMMON}  -- ${NUMACTL_COMMOM} ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n200
@@ -145,6 +149,8 @@ run_vtune_autonuma () {
   GRAPH=$2
   EXE=$3
 
+  export OMP_NUM_THREADS=${NUM_THREADS}
+  echo "OMP_NUM_THREADS is $OMP_NUM_THREADS"
 
   VTUNE_MEMACC_COMMON="/opt/intel/oneapi/vtune/latest/bin64/vtune -collect memory-access -start-paused \
       -knob sampling-interval=10 -knob analyze-mem-objects=true -knob analyze-openmp=true \
@@ -265,19 +271,19 @@ mkdir -p $RESULT_DIR
 #done
 
 
-# AutoNUMA
-make clean
-make -j
-enable_autonuma
-echo "Number of threads: ${OMP_NUM_THREADS}" 
-for graph in "${GRAPH_LIST[@]}"
-do
-  for exe in "${EXE_LIST[@]}"
-  do
-    clean_cache
-    run_vtune_autonuma "${exe}_${graph}_${NUM_THREADS}threads_autonuma" $graph $exe
-  done
-done
+## AutoNUMA
+#make clean
+#make -j
+#enable_autonuma
+#echo "Number of threads: ${OMP_NUM_THREADS}" 
+#for graph in "${GRAPH_LIST[@]}"
+#do
+#  for exe in "${EXE_LIST[@]}"
+#  do
+#    clean_cache
+#    run_vtune_autonuma "${exe}_${graph}_${NUM_THREADS}threads_autonuma" $graph $exe
+#  done
+#done
 
 # Neighbors array on node 1
 make clean
