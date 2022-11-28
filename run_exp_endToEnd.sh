@@ -1,9 +1,11 @@
 #!/bin/bash
 
-# TODO: combine run_gap and run_gap_autonuma 
-
 # import common functions
-echo ${BIGMEMBENCH_COMMON_PATH}
+if [ "$BIGMEMBENCH_COMMON_PATH" = "" ] ; then
+  echo "ERROR: bigmembench_common script not found. BIGMEMBENCH_COMMON_PATH is $BIGMEMBENCH_COMMON_PATH"
+  echo "Have you set BIGMEMBENCH_COMMON_PATH correctly? Are you using sudo -E instead of just sudo?"
+  exit 1
+fi
 source ${BIGMEMBENCH_COMMON_PATH}/run_exp_common.sh
 
 GRAPH_DIR="/ssd1/songxin8/thesis/graph/gapbs/benchmark/graphs"
@@ -28,10 +30,12 @@ clean_up () {
 }
 
 run_gap () { 
-  OUTFILE=$1 #first argument
+  OUTFILE_NAME=$1 #first argument
   GRAPH=$2
   EXE=$3
   CONFIG=$4
+
+  OUTFILE_PATH="${RESULT_DIR}/${OUTFILE_NAME}"
 
   if [[ "$CONFIG" == "ALL_LOCAL" ]]; then
     # All local config: place both data and compute on node 1
@@ -49,39 +53,35 @@ run_gap () {
     exit 1
   fi
 
-  echo "Start" > $OUTFILE
-  echo "NUMA hardware config is: "
-  NUMACTL_OUT=$(numactl -H)
-  echo "$NUMACTL_OUT"
-
+  echo "Start" > $OUTFILE_PATH
   case $EXE in
     "bfs")
-      $COMMAND_COMMON ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n360 &>> $OUTFILE &
+      $COMMAND_COMMON ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n360 &>> $OUTFILE_PATH &
       TIME_PID=$! 
       EXE_PID=$(pgrep -P $TIME_PID)
       ;;
     "pr")
-      $COMMAND_COMMON ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -i1000 -t1e-4 -n8 &>> $OUTFILE &
+      $COMMAND_COMMON ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -i1000 -t1e-4 -n8 &>> $OUTFILE_PATH &
       TIME_PID=$! 
       EXE_PID=$(pgrep -P $TIME_PID)
       ;;
     "cc")
-      $COMMAND_COMMON ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n260 &>> $OUTFILE &
+      $COMMAND_COMMON ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n260 &>> $OUTFILE_PATH &
       TIME_PID=$! 
       EXE_PID=$(pgrep -P $TIME_PID)
       ;;
     "bc")
-      $COMMAND_COMMON ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -i4 -n4 &>> $OUTFILE &
+      $COMMAND_COMMON ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -i4 -n4 &>> $OUTFILE_PATH &
       TIME_PID=$! 
       EXE_PID=$(pgrep -P $TIME_PID)
       ;; 
     "sssp")
-      $COMMAND_COMMON ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.wsg -d2 -n1 &>> $OUTFILE &
+      $COMMAND_COMMON ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.wsg -d2 -n1 &>> $OUTFILE_PATH &
       TIME_PID=$! 
       EXE_PID=$(pgrep -P $TIME_PID)
       ;;
     "tc")
-      $COMMAND_COMMON ./${EXE} -f ${GRAPH_DIR}/${GRAPH}U.sg -n1 &>> $OUTFILE &
+      $COMMAND_COMMON ./${EXE} -f ${GRAPH_DIR}/${GRAPH}U.sg -n1 &>> $OUTFILE_PATH &
       TIME_PID=$! 
       EXE_PID=$(pgrep -P $TIME_PID)
       ;;
@@ -91,13 +91,13 @@ run_gap () {
   esac
 
   echo "EXE PID is ${EXE_PID}"
-  echo "start" > ${OUTFILE}_numastat
-  while true; do numastat -p $EXE_PID >> ${OUTFILE}_numastat; sleep 5; done &
+  echo "start" > ${OUTFILE_PATH}_numastat
+  while true; do numastat -p $EXE_PID >> ${OUTFILE_PATH}_numastat; sleep 5; done &
   NUMASTAT_PID=$!
-  top -b -d 10 -1 -p $EXE_PID > ${OUTFILE}_top_log &
+  top -b -d 10 -1 -p $EXE_PID > ${OUTFILE_PATH}_topLog &
   TOP_PID=$!
 
-  echo "Waiting for GAP kernel to complete (PID is ${EXE_PID}). numastat is logged into ${OUTFILE}_numastat, PID is ${NUMASTAT_PID}. Top log PID is ${TOP_PID}" 
+  echo "Waiting for GAP kernel to complete (PID is ${EXE_PID}). numastat is logged into ${OUTFILE_PATH}_numastat, PID is ${NUMASTAT_PID}. Top log PID is ${TOP_PID}" 
   wait $TIME_PID
   echo "GAP kernel complete."
   kill $NUMASTAT_PID
@@ -112,7 +112,11 @@ trap clean_up SIGHUP SIGINT SIGTERM
 
 mkdir -p $RESULT_DIR
 
-## TPP
+echo "NUMA hardware config is: "
+NUMACTL_OUT=$(numactl -H)
+echo "$NUMACTL_OUT"
+
+# TPP
 make clean -j
 make -j
 enable_tpp 
@@ -123,7 +127,8 @@ do
     clean_cache
     export OMP_NUM_THREADS=${NUM_THREADS}
     echo "NUM thread: $OMP_NUM_THREADS"
-    run_gap "${RESULT_DIR}/${exe}_${graph}_${NUM_THREADS}threads_tpp" $graph $exe "TPP"
+    LOGFILE_NAME=$(gen_file_name "${exe}" "${graph}" "${MEMCONFIG}_tpp")
+    run_gap $LOGFILE_NAME $graph $exe "TPP"
   done
 done
 
@@ -137,7 +142,8 @@ do
   for exe in "${EXE_LIST[@]}"
   do
     clean_cache
-    run_gap "${RESULT_DIR}/${exe}-${graph}-${MEMCONFIG}_autonuma" $graph $exe "AUTONUMA"
+    LOGFILE_NAME=$(gen_file_name "${exe}" "${graph}" "${MEMCONFIG}_autonuma")
+    run_gap $LOGFILE_NAME $graph $exe "AUTONUMA"
   done
 done
 
@@ -151,7 +157,8 @@ do
   for exe in "${EXE_LIST[@]}"
   do
     clean_cache
-    run_gap "${RESULT_DIR}/${exe}_${graph}_${NUM_THREADS}threads_edgesonremote" $graph $exe "EDGES_ON_REMOTE"
+    LOGFILE_NAME=$(gen_file_name "${exe}" "${graph}" "${MEMCONFIG}_edgesOnRemote")
+    run_gap $LOGFILE_NAME $graph $exe "EDGES_ON_REMOTE"
   done
 done
 
@@ -165,6 +172,7 @@ do
   for exe in "${EXE_LIST[@]}"
   do
     clean_cache
-    run_gap "${RESULT_DIR}/${exe}-${graph}-${MEMCONFIG}_allLocal" $graph $exe "ALL_LOCAL"
+    LOGFILE_NAME=$(gen_file_name "${exe}" "${graph}" "${MEMCONFIG}_allLocal")
+    run_gap $LOGFILE_NAME $graph $exe "ALL_LOCAL"
   done
 done
