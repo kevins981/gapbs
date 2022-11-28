@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# TODO: since the number of trials required is different for each graph/threads/config, should prob pass
+#       it into run_gap
+
 # import common functions
 if [ "$BIGMEMBENCH_COMMON_PATH" = "" ] ; then
   echo "ERROR: bigmembench_common script not found. BIGMEMBENCH_COMMON_PATH is $BIGMEMBENCH_COMMON_PATH"
@@ -57,38 +60,31 @@ run_gap () {
   case $EXE in
     "bfs")
       $COMMAND_COMMON ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n360 &>> $OUTFILE_PATH &
-      TIME_PID=$! 
-      EXE_PID=$(pgrep -P $TIME_PID)
       ;;
     "pr")
       $COMMAND_COMMON ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -i1000 -t1e-4 -n8 &>> $OUTFILE_PATH &
-      TIME_PID=$! 
-      EXE_PID=$(pgrep -P $TIME_PID)
       ;;
     "cc")
       $COMMAND_COMMON ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -n260 &>> $OUTFILE_PATH &
-      TIME_PID=$! 
-      EXE_PID=$(pgrep -P $TIME_PID)
       ;;
     "bc")
       $COMMAND_COMMON ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.sg -i4 -n4 &>> $OUTFILE_PATH &
-      TIME_PID=$! 
-      EXE_PID=$(pgrep -P $TIME_PID)
       ;; 
     "sssp")
       $COMMAND_COMMON ./${EXE} -f ${GRAPH_DIR}/${GRAPH}.wsg -d2 -n1 &>> $OUTFILE_PATH &
-      TIME_PID=$! 
-      EXE_PID=$(pgrep -P $TIME_PID)
       ;;
     "tc")
       $COMMAND_COMMON ./${EXE} -f ${GRAPH_DIR}/${GRAPH}U.sg -n1 &>> $OUTFILE_PATH &
-      TIME_PID=$! 
-      EXE_PID=$(pgrep -P $TIME_PID)
       ;;
     *)
-      echo -n "Unknown executable $EXE"
+      echo -n "ERROR: Unknown executable $EXE"
+      exit 1
       ;;
   esac
+  # the PID of the background /usr/bin/time command
+  TIME_PID=$! 
+  # the PID of the kernel, which is a child of /usr/bin/time
+  EXE_PID=$(pgrep -P $TIME_PID)
 
   echo "EXE PID is ${EXE_PID}"
   echo "start" > ${OUTFILE_PATH}_numastat
