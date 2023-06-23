@@ -16,6 +16,9 @@
 #include "timer.h"
 #include "util.h"
 
+#include <pthread.h>
+#include "perf_lfu.cpp"
+
 /*
 GAP Benchmark Suite
 Kernel: Betweenness Centrality (BC)
@@ -230,6 +233,22 @@ int main(int argc, char* argv[]) {
   // vtune should be paused when launched via the -start-paused vtunes option
   __itt_resume();
   printf("[INFO: VTUNE] Vtune analysis resumed.\n");
+#endif
+
+#ifdef TINYLFU
+  // start perf monitornig thread
+  pthread_t perf_thread;
+  int r = pthread_create(&perf_thread, NULL, perf_func, NULL);
+  if (r != 0) {
+    std::cout << "pthread create failed." << std::endl;
+    exit(1);
+  }
+  r = pthread_setname_np(perf_thread, "lfu_perf");
+  if (r != 0) {
+    std::cout << "perf thread set name failed." << std::endl;
+  }
+
+  std::cout << "TinyLFU perf thread created." << std::endl;
 #endif
   CLIterApp cli(argc, argv, "betweenness-centrality", 1);
   if (!cli.ParseArgs())

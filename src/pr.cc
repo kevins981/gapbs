@@ -11,6 +11,11 @@
 #include "graph.h"
 #include "pvector.h"
 
+#ifdef TINYLFU
+#include <pthread.h>
+#include "perf_lfu.cpp"
+#endif
+
 /*
 GAP Benchmark Suite
 Kernel: PageRank (PR)
@@ -37,6 +42,10 @@ pvector<ScoreT> PageRankPullGS(const Graph &g, int max_iters,
   const ScoreT base_score = (1.0f - kDamp) / g.num_nodes();
   pvector<ScoreT> scores(g.num_nodes(), init_score);
   pvector<ScoreT> outgoing_contrib(g.num_nodes());
+  
+  //printf("[DEBUG] outgoing_contrib start: %p end: %p \n", &(*(outgoing_contrib.begin())), &(*(outgoing_contrib.end())));
+  std::cout << std::hex << "[DEBUG] outgoing_contrib start, end = " << &(*(outgoing_contrib.begin())) << ", " << &(*(outgoing_contrib.end())) << std::endl;
+  std::cout << std::dec;
   #pragma omp parallel for
   for (NodeID n=0; n < g.num_nodes(); n++) {
     outgoing_contrib[n] = init_score / g.out_degree(n);
@@ -101,6 +110,23 @@ int main(int argc, char* argv[]) {
   __itt_resume();
   printf("[INFO: VTUNE] Vtune analysis resumed.\n");
 #endif
+
+#ifdef TINYLFU
+  // start perf monitornig thread
+  pthread_t perf_thread;
+  int r = pthread_create(&perf_thread, NULL, perf_func, NULL);
+  if (r != 0) {
+    std::cout << "pthread create failed." << std::endl;
+    exit(1);
+  }
+  r = pthread_setname_np(perf_thread, "lfu_perf");
+  if (r != 0) {
+    std::cout << "perf thread set name failed." << std::endl;
+  }
+
+  std::cout << "TinyLFU perf thread created." << std::endl;
+#endif
+
   CLPageRank cli(argc, argv, "pagerank", 1e-4, 20);
   if (!cli.ParseArgs())
     return -1;
