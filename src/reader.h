@@ -11,6 +11,8 @@
 #include <type_traits>
 #include <numa.h>
 #include <memkind.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include "pvector.h"
 #include "util.h"
@@ -369,6 +371,13 @@ class Reader {
     file.close();
     t.Stop();
     PrintTime("Read Time", t.Seconds());
+
+    printf("Now that the graph is loaded into memory, clearing page cache... \n");
+    int drop_caches_fd = open("/proc/sys/vm/drop_caches", O_WRONLY);
+    write(drop_caches_fd, "1", 1);
+    close(drop_caches_fd);
+    printf("Clear page cache done. \n");
+
 #if defined(NEIGH_ON_NVM)
     size_t stats_active;
     size_t stats_resident;
