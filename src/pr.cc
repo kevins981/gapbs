@@ -40,8 +40,8 @@ pvector<ScoreT> PageRankPullGS(const Graph &g, int max_iters,
                              double epsilon = 0) {
   const ScoreT init_score = 1.0f / g.num_nodes();
   const ScoreT base_score = (1.0f - kDamp) / g.num_nodes();
+  pvector<ScoreT> outgoing_contrib(g.num_nodes()); // allocating hotter object first
   pvector<ScoreT> scores(g.num_nodes(), init_score);
-  pvector<ScoreT> outgoing_contrib(g.num_nodes());
   
   //printf("[DEBUG] outgoing_contrib start: %p end: %p \n", &(*(outgoing_contrib.begin())), &(*(outgoing_contrib.end())));
   std::cout << std::hex << "[DEBUG] outgoing_contrib start, end = " << &(*(outgoing_contrib.begin())) << ", " << &(*(outgoing_contrib.end())) << std::endl;
