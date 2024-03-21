@@ -6,7 +6,7 @@ PAR_FLAG = -fopenmp
 LIBS = -lnuma
 
 VTUNE_HOME= /opt/intel/oneapi/vtune/latest
-INCLUDES += -I${BIGMEMBENCH_COMMON_PATH}/tinylfu
+#INCLUDES += -I${BIGMEMBENCH_COMMON_PATH}/tinylfu
 
 ifneq ($(VTUNE_HOME),)
   CXX_FLAGS +=  -DVTUNE_ANALYSIS=1

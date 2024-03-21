@@ -11,11 +11,6 @@
 #include "graph.h"
 #include "pvector.h"
 
-#ifdef TINYLFU
-#include <pthread.h>
-#include "perf_lfu.cpp"
-#endif
-
 /*
 GAP Benchmark Suite
 Kernel: PageRank (PR)
@@ -40,6 +35,7 @@ pvector<ScoreT> PageRankPullGS(const Graph &g, int max_iters,
                              double epsilon = 0) {
   const ScoreT init_score = 1.0f / g.num_nodes();
   const ScoreT base_score = (1.0f - kDamp) / g.num_nodes();
+  std::cout << "[DEBUG] Allocating outgoing_contrib first" << std::endl;
   pvector<ScoreT> outgoing_contrib(g.num_nodes()); // allocating hotter object first
   pvector<ScoreT> scores(g.num_nodes(), init_score);
   
@@ -109,22 +105,6 @@ int main(int argc, char* argv[]) {
   // vtune should be paused when launched via the -start-paused vtunes option
   __itt_resume();
   printf("[INFO: VTUNE] Vtune analysis resumed.\n");
-#endif
-
-#ifdef TINYLFU
-  // start perf monitornig thread
-  pthread_t perf_thread;
-  int r = pthread_create(&perf_thread, NULL, perf_func, NULL);
-  if (r != 0) {
-    std::cout << "pthread create failed." << std::endl;
-    exit(1);
-  }
-  r = pthread_setname_np(perf_thread, "lfu_perf");
-  if (r != 0) {
-    std::cout << "perf thread set name failed." << std::endl;
-  }
-
-  std::cout << "TinyLFU perf thread created." << std::endl;
 #endif
 
   CLPageRank cli(argc, argv, "pagerank", 1e-4, 20);

@@ -15,7 +15,6 @@
 #include "timer.h"
 
 #include <pthread.h>
-#include "perf_lfu.cpp"
 
 /*
 GAP Benchmark Suite
@@ -223,21 +222,6 @@ int main(int argc, char* argv[]) {
   printf("[INFO: VTUNE] Vtune analysis resumed.\n");
 #endif
 
-#ifdef TINYLFU
-  // start perf monitornig thread
-  pthread_t perf_thread;
-  int r = pthread_create(&perf_thread, NULL, perf_func, NULL);
-  if (r != 0) {
-    std::cout << "pthread create failed." << std::endl;
-    exit(1);
-  }
-  r = pthread_setname_np(perf_thread, "lfu_perf");
-  if (r != 0) {
-    std::cout << "perf thread set name failed." << std::endl;
-  }
-
-  std::cout << "TinyLFU perf thread created." << std::endl;
-#endif
   CLApp cli(argc, argv, "connected-components-afforest");
   if (!cli.ParseArgs())
     return -1;
