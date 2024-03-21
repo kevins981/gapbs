@@ -16,9 +16,11 @@ GRAPH_DIR="/ssd1/songxin8/thesis/graph/graphs"
 NUM_THREADS=16
 export OMP_NUM_THREADS=${NUM_THREADS}
 RESULT_DIR="exp/isca24/hemem_emulate/" 
-MEMCONFIG="${NUM_THREADS}threads_16GB_hemem"
-#HOOK_SO="/ssd1/songxin8/thesis/bigmembench_common/hook/hook.so"
-HOOK_SO="/ssd1/songxin8/thesis/bigmembench_common_isca24_hemem/hook/hook.so"
+MEMCONFIG="${NUM_THREADS}threads_32GB_hemem"
+HOOK_DIR="/ssd1/songxin8/thesis/bigmembench_common/hook"
+HOOK_HEMEM_DIR="/ssd1/songxin8/thesis/bigmembench_common_isca24_hemem/hook"
+HOOK_SO="/ssd1/songxin8/thesis/bigmembench_common/hook/hook.so"
+HOOK_HEMEM_SO="/ssd1/songxin8/thesis/bigmembench_common_isca24_hemem/hook/hook.so"
 NUM_ITERS=1
 
 PERF_STAT_INTERVAL=10000
@@ -26,8 +28,8 @@ PERF_STAT_INTERVAL=10000
 #declare -a GRAPH_LIST=("kron_g30_k32" "urand_g30_k32") 
 #declare -a GRAPH_LIST=("kron_g31_k4_64bitnode")
 declare -a GRAPH_LIST=("g31k4")
-#declare -a EXE_LIST=("bc") 
-declare -a EXE_LIST=("bfs" "bc" "cc") 
+declare -a EXE_LIST=("bc") 
+#declare -a EXE_LIST=("bfs" "cc" "bc") 
 
 run_gap () { 
   OUTFILE_NAME=$1 #first argument
@@ -43,42 +45,57 @@ run_gap () {
 
   start_perf_stat $PERF_STAT_INTERVAL $OUTFILE_PATH
 
-  #if [[ "$CONFIG" == "LFU" ]]; then
-  #  pushd /ssd1/songxin8/thesis/bigmembench_common/hook
-  #  echo "Recompiling hook with right exe name: hook.cpp.${EXE}"
-  #  cp hook.cpp.${EXE} hook.cpp
-  #  g++ -shared -fPIC hook.cpp -o hook.so -O3 -ldl -lpthread -lnuma
-  #  popd
-  #  export LD_PRELOAD=${HOOK_SO}
-  #else
-  #  export LD_PRELOAD=
-  #fi
+
+  if [[ "$CONFIG" == "LFU" ]]; then
+    pushd $HOOK_DIR
+    echo "Recompiling hook with right exe name: hook.cpp.${EXE}"
+    cp hook.cpp.${EXE} hook.cpp
+    g++ -shared -fPIC hook.cpp -o hook.so -O3 -ldl -lpthread -lnuma
+    popd
+    export LD_PRELOAD=${HOOK_SO}
+  elif [[ "$CONFIG" == "HEMEM" ]]; then
+    pushd $HOOK_HEMEM_DIR
+    echo "Recompiling hemem hook with right exe name: hook.cpp.${EXE}"
+    cp hook.cpp.${EXE} hook.cpp
+    g++ -shared -fPIC hook.cpp -o hook.so -O3 -ldl -lpthread -lnuma
+    popd
+    export LD_PRELOAD=${HOOK_HEMEM_SO}
+    export HEMEM_HOT_THRESH=2
+  else
+    export LD_PRELOAD=
+  fi
 
   echo "LD_PRELOAD is $LD_PRELOAD"
 
   case $EXE in
     "bfs")
-      echo "$COMMAND_COMMON ./${EXE} -g 31 -k 4 -n256" >> $OUTFILE_PATH 
-      $COMMAND_COMMON ./${EXE} -g 31 -k 4 -n256 &>> $OUTFILE_PATH 
+      #echo "$COMMAND_COMMON ./${EXE} -g 31 -k 4 -n256" >> $OUTFILE_PATH 
+      #$COMMAND_COMMON ./${EXE} -g 31 -k 4 -n256 &>> $OUTFILE_PATH 
+      echo "$COMMAND_COMMON ./${EXE} -g 31 -k 4 -n200" >> $OUTFILE_PATH 
+      $COMMAND_COMMON ./${EXE} -g 31 -k 4 -n200 &>> $OUTFILE_PATH 
       ;;
     "pr")
       echo "$COMMAND_COMMON ./${EXE} -g 31 -k 4 -i1000 -t1e-4 -n16" >> $OUTFILE_PATH
       $COMMAND_COMMON ./${EXE} -g 31 -k 4 -i1000 -t1e-4 -n16 &>> $OUTFILE_PATH 
       ;;
     "bc")
-      echo "$COMMAND_COMMON ./${EXE} -g 31 -k 4 -i4 -n16" >> $OUTFILE_PATH
-      $COMMAND_COMMON ./${EXE} -g 31 -k 4 -i4 -n16 &>> $OUTFILE_PATH 
+      #echo "$COMMAND_COMMON ./${EXE} -g 31 -k 4 -i4 -n8" >> $OUTFILE_PATH
+      #$COMMAND_COMMON ./${EXE} -g 31 -k 4 -i4 -n8 &>> $OUTFILE_PATH 
+      echo "$COMMAND_COMMON ./${EXE} -g 31 -k 4 -i4 -n6" >> $OUTFILE_PATH
+      $COMMAND_COMMON ./${EXE} -g 31 -k 4 -i4 -n6 &>> $OUTFILE_PATH 
       ;; 
     "cc")
-      echo "$COMMAND_COMMON ./${EXE} -g 31 -k 4 -n256" >> $OUTFILE_PATH
-      $COMMAND_COMMON ./${EXE} -g 31 -k 4 -n256 &>> $OUTFILE_PATH 
+      #echo "$COMMAND_COMMON ./${EXE} -g 31 -k 4 -n256" >> $OUTFILE_PATH
+      #$COMMAND_COMMON ./${EXE} -g 31 -k 4 -n256 &>> $OUTFILE_PATH 
+      echo "$COMMAND_COMMON ./${EXE} -g 31 -k 4 -n150" >> $OUTFILE_PATH
+      $COMMAND_COMMON ./${EXE} -g 31 -k 4 -n150 &>> $OUTFILE_PATH 
       ;;
     *)
       echo -n "ERROR: Unknown executable $EXE"
       exit 1
       ;;
   esac
-  #export LD_PRELOAD=
+  export LD_PRELOAD=
 
   write_backmatter $OUTFILE_PATH
   kill_perf_stat
@@ -106,16 +123,22 @@ mkdir -p $RESULT_DIR
 #  done
 #done
 
-# TinyLFU
-make clean -j
-make -j tinylfu
-BUILD_RET=$?
-echo "Build return: $BUILD_RET"
-if [ $BUILD_RET -ne 0 ]; then
-  echo "ERROR: Failed to build GAP"
-  exit 1
-fi
+## TinyLFU
+#enable_lfu 
+#for ((i=0;i<$NUM_ITERS;i++));
+#do
+#  for graph in "${GRAPH_LIST[@]}"
+#  do
+#    for exe in "${EXE_LIST[@]}"
+#    do
+#      clean_cache
+#      LOGFILE_NAME=$(gen_file_name "${exe}" "${graph}" "${MEMCONFIG}_lfu" "iter$i")
+#      run_gap $LOGFILE_NAME $graph $exe "LFU"
+#    done
+#  done
+#done
 
+# Emulated HeMem
 enable_lfu 
 for ((i=0;i<$NUM_ITERS;i++));
 do
@@ -124,8 +147,8 @@ do
     for exe in "${EXE_LIST[@]}"
     do
       clean_cache
-      LOGFILE_NAME=$(gen_file_name "${exe}" "${graph}" "${MEMCONFIG}_lfu" "iter$i")
-      run_gap $LOGFILE_NAME $graph $exe "LFU"
+      LOGFILE_NAME=$(gen_file_name "${exe}" "${graph}" "${MEMCONFIG}_hemem" "iter$i")
+      run_gap $LOGFILE_NAME $graph $exe "HEMEM"
     done
   done
 done
