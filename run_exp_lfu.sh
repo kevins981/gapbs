@@ -69,26 +69,20 @@ run_gap () {
 
   case $EXE in
     "bfs")
-      #echo "$COMMAND_COMMON ./${EXE} -g 31 -k 4 -n256" >> $OUTFILE_PATH 
-      #$COMMAND_COMMON ./${EXE} -g 31 -k 4 -n256 &>> $OUTFILE_PATH 
-      echo "$COMMAND_COMMON ./${EXE} -g 31 -k 4 -n200" >> $OUTFILE_PATH 
-      $COMMAND_COMMON ./${EXE} -g 31 -k 4 -n200 &>> $OUTFILE_PATH 
+      echo "$COMMAND_COMMON ./${EXE} -g 31 -k 4 -n256" >> $OUTFILE_PATH 
+      $COMMAND_COMMON ./${EXE} -g 31 -k 4 -n256 &>> $OUTFILE_PATH 
       ;;
     "pr")
       echo "$COMMAND_COMMON ./${EXE} -g 31 -k 4 -i1000 -t1e-4 -n16" >> $OUTFILE_PATH
       $COMMAND_COMMON ./${EXE} -g 31 -k 4 -i1000 -t1e-4 -n16 &>> $OUTFILE_PATH 
       ;;
     "bc")
-      #echo "$COMMAND_COMMON ./${EXE} -g 31 -k 4 -i4 -n8" >> $OUTFILE_PATH
-      #$COMMAND_COMMON ./${EXE} -g 31 -k 4 -i4 -n8 &>> $OUTFILE_PATH 
-      echo "$COMMAND_COMMON ./${EXE} -g 31 -k 4 -i4 -n6" >> $OUTFILE_PATH
-      $COMMAND_COMMON ./${EXE} -g 31 -k 4 -i4 -n6 &>> $OUTFILE_PATH 
+      echo "$COMMAND_COMMON ./${EXE} -g 31 -k 4 -i4 -n8" >> $OUTFILE_PATH
+      $COMMAND_COMMON ./${EXE} -g 31 -k 4 -i4 -n8 &>> $OUTFILE_PATH 
       ;; 
     "cc")
-      #echo "$COMMAND_COMMON ./${EXE} -g 31 -k 4 -n256" >> $OUTFILE_PATH
-      #$COMMAND_COMMON ./${EXE} -g 31 -k 4 -n256 &>> $OUTFILE_PATH 
-      echo "$COMMAND_COMMON ./${EXE} -g 31 -k 4 -n150" >> $OUTFILE_PATH
-      $COMMAND_COMMON ./${EXE} -g 31 -k 4 -n150 &>> $OUTFILE_PATH 
+      echo "$COMMAND_COMMON ./${EXE} -g 31 -k 4 -n256" >> $OUTFILE_PATH
+      $COMMAND_COMMON ./${EXE} -g 31 -k 4 -n256 &>> $OUTFILE_PATH 
       ;;
     *)
       echo -n "ERROR: Unknown executable $EXE"
