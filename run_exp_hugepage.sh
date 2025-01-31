@@ -15,8 +15,9 @@ source ${BIGMEMBENCH_COMMON_PATH}/run_exp_common.sh
 GRAPH_DIR="/ssd1/songxin8/thesis/graph/graphs"
 NUM_THREADS=16
 export OMP_NUM_THREADS=${NUM_THREADS}
-RESULT_DIR="exp/asplos25/regularpage_128GB/" 
-#RESULT_DIR="exp/asplos25/onlyfreqcbf/" 
+#RESULT_DIR="exp/eurosys25/freqtierStableConfig/" 
+#RESULT_DIR="exp/asplos25/hugepage_test/"
+RESULT_DIR="exp/asplos25/hugepage_32GB/"
 
 
 HOOK_DIR="$BIGMEMBENCH_COMMON_PATH/hook"
@@ -27,13 +28,14 @@ HOOK_HEMEM_SO="/ssd1/songxin8/thesis/bigmembench_common_isca24_hemem/hook/hook.s
 NUM_ITERS=1
 
 PERF_STAT_INTERVAL=10000
-MEMCONFIG="${NUM_THREADS}threads_128GB"
+#MEMCONFIG="16GB_${NUM_THREADS}threads_smallerMetadata_lowerWaterMark"
+MEMCONFIG="32GB_${NUM_THREADS}threads"
 
 #declare -a GRAPH_LIST=("kron_g30_k32" "urand_g30_k32") 
 #declare -a GRAPH_LIST=("kron_g31_k4_64bitnode")
 declare -a GRAPH_LIST=("g31k4")
-#declare -a EXE_LIST=("bfs" "cc") 
 declare -a EXE_LIST=("bfs" "cc" "pr") 
+#declare -a EXE_LIST=("bfs")
 
 run_gap () { 
   OUTFILE_NAME=$1 #first argument
@@ -107,8 +109,8 @@ mkdir -p $RESULT_DIR
 
 
 # AutoNUMA. not specifying where to allocate. Let AutoNUMA decide 
+huge_page_on
 enable_autonuma "MGLRU"
-huge_page_off
 for ((i=0;i<$NUM_ITERS;i++));
 do
   for graph in "${GRAPH_LIST[@]}"
@@ -123,8 +125,8 @@ do
 done
 
 ## TinyLFU
-#enable_lfu 
-#huge_page_off
+#huge_page_on
+#enable_lfu
 #for ((i=0;i<$NUM_ITERS;i++));
 #do
 #  for graph in "${GRAPH_LIST[@]}"
@@ -135,6 +137,19 @@ done
 #      LOGFILE_NAME=$(gen_file_name "${exe}" "${graph}" "${MEMCONFIG}_lfu" "iter$i")
 #      run_gap $LOGFILE_NAME $graph $exe "LFU"
 #    done
+#  done
+#done
+
+## No tiering
+#huge_page_on
+#disable_numa 
+#for graph in "${GRAPH_LIST[@]}"
+#do
+#  for exe in "${EXE_LIST[@]}"
+#  do
+#    clean_cache
+#    LOGFILE_NAME=$(gen_file_name "${exe}" "${graph}" "${MEMCONFIG}_notiering")
+#    run_gap $LOGFILE_NAME $graph $exe "NO_TIERING"
 #  done
 #done
 
@@ -170,7 +185,6 @@ done
 
 ## TPP
 #enable_tpp 
-#huge_page_off
 #for ((i=0;i<$NUM_ITERS;i++));
 #do
 #  for graph in "${GRAPH_LIST[@]}"
@@ -210,17 +224,6 @@ done
 #  exit 1
 #fi
 
-#disable_numa 
-#
-#for graph in "${GRAPH_LIST[@]}"
-#do
-#  for exe in "${EXE_LIST[@]}"
-#  do
-#    clean_cache
-#    LOGFILE_NAME=$(gen_file_name "${exe}" "${graph}" "${MEMCONFIG}_allLocal")
-#    run_gap $LOGFILE_NAME $graph $exe "ALL_LOCAL"
-#  done
-#done
 
 ## Multi-clock
 #make clean -j
